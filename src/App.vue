@@ -1,5 +1,6 @@
 <template>
-  <div class="app-shell">
+  <router-view v-if="route.path === '/login'" />
+  <div v-else class="app-shell">
     <Sidebar />
     <div class="app-main">
       <Topbar />
@@ -17,6 +18,17 @@
 <script setup>
 import Sidebar from './components/Sidebar.vue'
 import Topbar from './components/Topbar.vue'
+import { useRoute } from 'vue-router'
+import { nextTick, onMounted, watch } from 'vue'
+const route = useRoute()
+onMounted(() => {
+  if ('scrollRestoration' in history) history.scrollRestoration = 'manual'
+  window.scrollTo(0, 0)
+})
+watch(() => route.fullPath, async () => {
+  await nextTick()
+  window.scrollTo(0, 0)
+})
 </script>
 
 <style>

@@ -46,6 +46,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { FileText, Search, X } from 'lucide-vue-next'
 import { auditStore, requestReportPreview } from '../state/auditStore'
+import { provincialState } from '../state/provincialState'
 
 const router = useRouter()
 const searchRoot = ref(null)
@@ -57,7 +58,7 @@ const selectedIndex = ref(0)
 const allReports = computed(() => [
   ...auditStore.records.house.map(record => ({ kind: 'house', record })),
   ...auditStore.records.curtain.map(record => ({ kind: 'curtain', record }))
-].sort((a, b) => b.record.time.localeCompare(a.record.time)))
+].filter(item => provincialState.user?.role !== 'org' || item.record.source !== 'organization' || item.record.organization === provincialState.user?.org).sort((a, b) => b.record.time.localeCompare(a.record.time)))
 
 const matches = computed(() => {
   const term = query.value.trim().toLocaleLowerCase()
@@ -95,7 +96,12 @@ function openSelected() {
 async function openReport(item) {
   isOpen.value = false
   query.value = ''
-  await router.push(item.kind === 'house' ? '/house-audit' : '/curtain-wall-audit')
+  if (provincialState.user?.role === 'org') {
+    await router.push(item.kind === 'curtain' ? '/org-field-inspection' : '/org-house-audit')
+    requestReportPreview(item.kind, item.record)
+    return
+  }
+  await router.push(item.kind === 'house' ? '/org-house-audit' : '/org-field-inspection')
   requestReportPreview(item.kind, item.record)
 }
 

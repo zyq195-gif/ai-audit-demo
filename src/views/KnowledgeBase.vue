@@ -1,9 +1,9 @@
 <template>
   <div class="management-page">
     <section class="management-stats">
-      <article class="surface management-stat"><span class="metric-icon indigo"><BookOpen :size="18" /></span><div><small>标准总数</small><strong>{{ standards.length }} <em>项</em></strong></div></article>
-      <article class="surface management-stat"><span class="metric-icon teal"><CircleCheck :size="18" /></span><div><small>当前启用</small><strong>{{ activeCount }} <em>项</em></strong></div></article>
-      <article class="surface management-stat"><span class="metric-icon amber"><Layers3 :size="18" /></span><div><small>覆盖类型</small><strong>{{ scopeCount }} <em>类</em></strong></div></article>
+      <article class="surface management-stat"><span class="metric-icon indigo"><BookOpen :size="18" /></span><div data-note="知识库中登记的标准资料"><small>标准总数</small><strong>{{ standards.length }} <em>项</em></strong></div></article>
+      <article class="surface management-stat"><span class="metric-icon teal"><CircleCheck :size="18" /></span><div data-note="审核时可引用的有效标准"><small>当前启用</small><strong>{{ activeCount }} <em>项</em></strong></div></article>
+      <article class="surface management-stat"><span class="metric-icon amber"><Layers3 :size="18" /></span><div data-note="标准适用的鉴定类型"><small>覆盖类型</small><strong>{{ scopeCount }} <em>类</em></strong></div></article>
     </section>
     <section class="surface management-list">
       <div class="management-toolbar">
@@ -16,8 +16,8 @@
         <div class="management-list-actions"><button class="button button-primary" @click="openForm()"><Plus :size="17" /> 新增标准</button></div>
       </div>
       <div class="management-table-wrap">
-        <table class="management-table"><thead><tr><th>标准名称</th><th>资料编号 / 版本</th><th>适用范围</th><th>状态</th><th>附件</th><th>更新时间</th><th>操作</th></tr></thead>
-          <tbody><tr v-for="item in filtered" :key="item.id"><td><div class="management-name"><span class="table-file-icon"><BookOpen :size="17" /></span><strong :title="item.name">{{ item.name }}</strong></div></td><td><span class="code-line">{{ item.code }}</span><small class="edition-line">{{ item.edition }}</small></td><td>{{ scopeLabel[item.scope] }}</td><td><span class="table-status" :class="{ inactive: item.status !== 'active' }"><span></span>{{ item.status === 'active' ? '已启用' : '已停用' }}</span></td><td>{{ item.fileName ? 'PDF 附件' : '演示条目' }}</td><td>{{ item.updatedAt }}</td><td><div class="row-actions"><button @click="openView(item)">查看</button><button @click="openForm(item)">编辑</button><button class="danger-text" @click="openDelete(item)">删除</button></div></td></tr></tbody>
+        <table class="management-table compact-list-table"><thead><tr><th>标准名称</th><th>资料编号 / 版本</th><th>适用范围</th><th>状态</th><th>更新时间</th><th>操作</th></tr></thead>
+          <tbody><tr v-for="item in filtered" :key="item.id"><td><div class="management-name"><span class="table-file-icon"><BookOpen :size="17" /></span><strong :title="item.name">{{ item.name }}</strong></div></td><td><span class="code-line">{{ item.code }}</span><small class="edition-line">{{ item.edition }}</small></td><td>{{ scopeLabel[item.scope] }}</td><td><span class="table-status" :class="{ inactive: item.status !== 'active' }"><span></span>{{ item.status === 'active' ? '已启用' : '已停用' }}</span></td><td>{{ item.updatedAt }}</td><td><div class="row-actions"><button @click="openView(item)">查看详情</button><button @click="openForm(item)">编辑</button><button class="danger-text" @click="openDelete(item)">删除</button></div></td></tr></tbody>
         </table>
         <div v-if="!filtered.length" class="empty-state"><BookOpen :size="26" /><strong>没有找到标准</strong><span>调整搜索词或筛选条件后重试。</span></div>
       </div>
@@ -38,7 +38,7 @@
           <p v-if="formError" class="form-error">{{ formError }}</p>
           <div class="management-modal-foot"><button type="button" class="button button-secondary" @click="modal = ''">取消</button><button class="button button-primary" type="submit" :disabled="saving">{{ saving ? '保存中…' : '保存标准' }}</button></div>
         </form>
-        <div v-else-if="modal === 'view'" class="management-detail"><div class="detail-title"><BookOpen :size="22" /><h3>{{ selected.name }}</h3></div><dl><div><dt>资料编号</dt><dd>{{ selected.code }}</dd></div><div><dt>版本信息</dt><dd>{{ selected.edition }}</dd></div><div><dt>适用范围</dt><dd>{{ scopeLabel[selected.scope] }}</dd></div><div><dt>使用状态</dt><dd>{{ selected.status === 'active' ? '已启用' : '已停用' }}</dd></div><div><dt>更新时间</dt><dd>{{ selected.updatedAt }}</dd></div><div><dt>PDF 附件</dt><dd>{{ selected.fileName || '无附件（演示条目）' }}</dd></div></dl><div class="management-modal-foot"><button v-if="selected.fileName" class="button button-secondary" @click="downloadAttachment"><Download :size="16" /> 下载附件</button><button class="button button-primary" @click="openForm(selected)">编辑标准</button></div></div>
+        <div v-else-if="modal === 'view'" class="management-detail"><div class="detail-title"><BookOpen :size="22" /><h3>{{ selected.name }}</h3></div><dl><div><dt>资料编号</dt><dd>{{ selected.code }}</dd></div><div><dt>版本信息</dt><dd>{{ selected.edition }}</dd></div><div><dt>适用范围</dt><dd>{{ scopeLabel[selected.scope] }}</dd></div><div><dt>使用状态</dt><dd>{{ selected.status === 'active' ? '已启用' : '已停用' }}</dd></div><div><dt>更新时间</dt><dd>{{ selected.updatedAt }}</dd></div><div><dt>PDF 附件</dt><dd>{{ selected.fileName || '无附件' }}</dd></div></dl><div class="management-modal-foot"><button v-if="selected.fileName" class="button button-secondary" @click="downloadAttachment"><Download :size="16" /> 下载附件</button><button class="button button-primary" @click="openForm(selected)">编辑标准</button></div></div>
         <div v-else class="delete-confirm"><div class="delete-icon"><Trash2 :size="22" /></div><h3>删除这条标准？</h3><p>{{ selected.name }}</p><span>删除后，此条目将从审核页的可用标准列表中移除。</span><div class="management-modal-foot"><button class="button button-secondary" @click="modal = ''">取消</button><button class="button button-danger" :disabled="saving" @click="confirmDelete">{{ saving ? '删除中…' : '确认删除' }}</button></div></div>
       </section>
     </div>
@@ -117,3 +117,6 @@ async function downloadAttachment() {
   } catch (error) { console.error(error); flash('附件读取失败。') }
 }
 </script>
+<style scoped>
+.compact-list-table{min-width:0}.compact-list-table th:first-child{width:27%}.compact-list-table th:nth-child(2){width:19%}.compact-list-table th:nth-child(3){width:17%}.compact-list-table th:nth-child(4){width:12%}.compact-list-table th:nth-child(5){width:13%}.compact-list-table th:last-child{width:12%}.compact-list-table .row-actions{flex-wrap:wrap;gap:7px}
+</style>

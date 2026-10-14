@@ -4,12 +4,12 @@ const standardSeeds = [
   { id: 'std-house-demo', name: '福建省房屋建筑可靠性鉴定技术导则', code: 'KB-H-001', edition: '示例条目', scope: 'house', status: 'active', fileName: '', updatedAt: '2026-10-09', source: 'demo' },
   { id: 'std-curtain-demo', name: '既有建筑幕墙安全性鉴定及加固标准', code: 'KB-C-001', edition: '示例条目', scope: 'curtain', status: 'active', fileName: '', updatedAt: '2026-10-09', source: 'demo' },
   { id: 'std-general-demo', name: '福建省房屋安全鉴定活动管理办法', code: 'KB-G-001', edition: '2025 年局部修订版', scope: 'general', status: 'active', fileName: '', updatedAt: '2026-10-09', source: 'demo' },
-  { id: 'std-house-check-demo', name: '房屋鉴定报告结构与签章核查清单（演示）', code: 'KB-H-002', edition: '演示规则 · 2026', scope: 'house', status: 'active', fileName: '', updatedAt: '2026-10-08', source: 'demo' },
-  { id: 'std-curtain-node-demo', name: '幕墙连接节点与支承构件复核要点（演示）', code: 'KB-C-002', edition: '演示规则 · 2026', scope: 'curtain', status: 'active', fileName: '', updatedAt: '2026-10-07', source: 'demo' },
-  { id: 'std-general-data-demo', name: '鉴定报告数据一致性检查规则（演示）', code: 'KB-G-002', edition: '演示规则 · 2026', scope: 'general', status: 'active', fileName: '', updatedAt: '2026-10-06', source: 'demo' },
-  { id: 'std-house-conclusion-demo', name: '房屋安全鉴定结论表述核查要点（演示）', code: 'KB-H-003', edition: '演示规则 · 2026', scope: 'house', status: 'active', fileName: '', updatedAt: '2026-10-05', source: 'demo' },
-  { id: 'std-curtain-material-demo', name: '幕墙材料与检测记录核对清单（演示）', code: 'KB-C-003', edition: '演示草案', scope: 'curtain', status: 'inactive', fileName: '', updatedAt: '2026-10-03', source: 'demo' },
-  { id: 'std-general-archive-demo', name: '现场检查资料归档字段示例（演示）', code: 'KB-G-003', edition: '演示规则 · 2026', scope: 'general', status: 'active', fileName: '', updatedAt: '2026-10-02', source: 'demo' }
+  { id: 'std-house-check-demo', name: '房屋鉴定报告结构与签章核查清单', code: 'KB-H-002', edition: '核查规则 · 2026', scope: 'house', status: 'active', fileName: '', updatedAt: '2026-10-08', source: 'demo' },
+  { id: 'std-curtain-node-demo', name: '幕墙连接节点与支承构件复核要点', code: 'KB-C-002', edition: '核查规则 · 2026', scope: 'curtain', status: 'active', fileName: '', updatedAt: '2026-10-07', source: 'demo' },
+  { id: 'std-general-data-demo', name: '鉴定报告数据一致性检查规则', code: 'KB-G-002', edition: '核查规则 · 2026', scope: 'general', status: 'active', fileName: '', updatedAt: '2026-10-06', source: 'demo' },
+  { id: 'std-house-conclusion-demo', name: '房屋安全鉴定结论表述核查要点', code: 'KB-H-003', edition: '核查规则 · 2026', scope: 'house', status: 'active', fileName: '', updatedAt: '2026-10-05', source: 'demo' },
+  { id: 'std-curtain-material-demo', name: '幕墙材料与检测记录核对清单', code: 'KB-C-003', edition: '待完善规则', scope: 'curtain', status: 'inactive', fileName: '', updatedAt: '2026-10-03', source: 'demo' },
+  { id: 'std-general-archive-demo', name: '现场检查资料归档字段示例', code: 'KB-G-003', edition: '核查规则 · 2026', scope: 'general', status: 'active', fileName: '', updatedAt: '2026-10-02', source: 'demo' }
 ]
 const peopleSeeds = [
   { id: 'person-demo-1', name: '张工', department: '鉴定业务部', role: '鉴定工程师', phone: '138****1001', status: 'active', updatedAt: '2026-10-09' },

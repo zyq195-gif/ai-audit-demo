@@ -56,7 +56,7 @@ export function createAuditPdf(record, category) {
   ctx.fillText('AI 报告智能审核', 86, 152)
   ctx.fillStyle = '#8B98AA'
   ctx.font = '28px "Microsoft YaHei", sans-serif'
-  ctx.fillText(category + ' · 模拟审核结果', 88, 207)
+  ctx.fillText(category + ' · 审核结果', 88, 207)
   roundRect(ctx, 86, 255, 1068, 178, 26, '#F5F7FB', '#E5EAF2')
   ctx.fillStyle = '#8B98AA'
   ctx.font = '24px "Microsoft YaHei", sans-serif'
@@ -66,13 +66,13 @@ export function createAuditPdf(record, category) {
   wrappedText(ctx, record.name, 118, 357, 990, 42, 2)
   ctx.fillStyle = '#8B98AA'
   ctx.font = '23px "Microsoft YaHei", sans-serif'
-  ctx.fillText('审核时间：' + record.time + '    ·    模拟问题：' + record.issues.length + ' 项', 118, 403)
+  ctx.fillText('审核时间：' + record.time + '    ·    问题：' + record.issues.length + ' 项', 118, 403)
   ctx.fillStyle = '#243248'
   ctx.font = 'bold 34px "Microsoft YaHei", sans-serif'
   ctx.fillText('问题清单', 86, 506)
   ctx.fillStyle = '#A9B4C2'
   ctx.font = '22px "Microsoft YaHei", sans-serif'
-  ctx.fillText('以下内容为演示数据，请以人工复核为准', 86, 548)
+  ctx.fillText('以下内容请结合原始资料人工复核', 86, 548)
   let y = 588
   record.issues.forEach((issue, index) => {
     roundRect(ctx, 86, y, 1068, 228, 22, '#ffffff', '#EAF0FF')
@@ -97,7 +97,7 @@ export function createAuditPdf(record, category) {
   ctx.fillRect(86, 1623, 1068, 2)
   ctx.fillStyle = '#A9B4C2'
   ctx.font = '21px "Microsoft YaHei", sans-serif'
-  ctx.fillText('演示版 · 未执行真实 AI 识别、规则比对或合规判定', 86, 1670)
+  ctx.fillText('审核结果请结合原始资料人工复核', 86, 1670)
   ctx.fillText('ReportAudit AI', 980, 1670)
   const dataUrl = canvas.toDataURL('image/jpeg', 0.92)
   const bytes = Uint8Array.from(atob(dataUrl.split(',')[1]), char => char.charCodeAt(0))
@@ -105,7 +105,7 @@ export function createAuditPdf(record, category) {
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
   link.href = url
-  link.download = record.name.replace(/\.pdf$/i, '').replace(/[\\/:*?"<>|]/g, '_') + '_模拟审核报告.pdf'
+  link.download = record.name.replace(/\.pdf$/i, '').replace(/[\\/:*?"<>|]/g, '_') + '_审核报告.pdf'
   document.body.appendChild(link)
   link.click()
   link.remove()
