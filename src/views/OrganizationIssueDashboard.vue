@@ -18,26 +18,26 @@
         <div class="issue-chart-foot"><span>{{ section.records.length ? `来自 ${section.records.length} 份已下发报告` : '暂无已下发报告' }}</span><router-link :to="section.path">查看鉴定记录 <ArrowRight :size="14" /></router-link></div>
       </section>
     </div>
-    <section class="surface org-recent-card"><div class="card-heading"><div><span class="section-kicker">04 / 业务动态</span><h2>最近报告</h2></div><router-link class="org-ledger-link" to="/records">查看台账 <ArrowRight :size="15" /></router-link></div><div v-if="!ownRecords.length" class="empty-state">暂无本机构提交记录</div><div v-else class="org-recent-list"><div v-for="record in ownRecords.slice(0, 6)" :key="record.id" class="org-recent-row"><span class="table-file-icon"><ClipboardCheck :size="17" /></span><div><strong :title="record.name">{{ record.name }}</strong><small>{{ record.organization }} · {{ record.time }}</small></div><span class="table-status" :class="reportStatusClass(record)"><span></span>{{ statusText(record.status) }}</span></div></div></section>
+    <section class="surface org-recent-card"><div class="card-heading"><div><span class="section-kicker">04 / 业务动态</span><h2>最近报告</h2></div><router-link class="org-ledger-link" to="/records">查看台账 <ArrowRight :size="15" /></router-link></div><DashboardActivity :records="ownRecords.slice(0, 12)" /></section>
   </div>
 </template>
 
 <script setup>
 import { computed } from 'vue'
 import { ArrowRight, ChartNoAxesCombined, ClipboardCheck, House, ScanLine, TriangleAlert } from 'lucide-vue-next'
+import DashboardActivity from '../components/DashboardActivity.vue'
 import { auditStore } from '../state/auditStore'
 import { provincialState } from '../state/provincialState'
-import { reportStatusClass, reportStatusRank } from '../utils/reportRecords'
+import { reportStatusRank } from '../utils/reportRecords'
 
 const chartColors = ['#235FD6', '#78A2EA', '#B5CDF3', '#DBE7FA']
-const ownRecords = computed(() => [...auditStore.records.house, ...auditStore.records.curtain].filter(record => record.source === 'organization' && record.organization === provincialState.user?.org).sort((a, b) => reportStatusRank(a) - reportStatusRank(b) || String(b.time).localeCompare(String(a.time))))
+const ownRecords = computed(() => ['house', 'curtain'].flatMap(kind => auditStore.records[kind].filter(record => record.source === 'organization' && record.organization === provincialState.user?.org).map(record => ({ ...record, kind }))).sort((a, b) => reportStatusRank(a) - reportStatusRank(b) || String(b.time).localeCompare(String(a.time))))
 const flow = computed(() => [
   { label: '待审核', value: ownRecords.value.filter(record => ['pending', 'reviewing'].includes(record.status)).length, color: '#78a2ea' },
   { label: '待下发', value: ownRecords.value.filter(record => record.status === 'reviewed').length, color: '#7968d9' },
   { label: '已下发', value: ownRecords.value.filter(record => record.status === 'issued').length, color: '#8768df' },
   { label: '已完成', value: ownRecords.value.filter(record => record.status === 'completed').length, color: '#258faf' }
 ])
-function statusText(status) { return status === 'completed' ? '已完成' : status === 'issued' ? '已下发' : status === 'reviewed' ? '待下发' : status === 'withdrawn' ? '已撤回' : '待审核' }
 const groups = [
   { group: 'content', name: '内容完整性' },
   { group: 'basis', name: '依据与参数' },

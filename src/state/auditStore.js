@@ -242,6 +242,7 @@ function stamp() { return new Intl.DateTimeFormat('zh-CN', { timeZone: 'Asia/Sha
 
 export const auditStore = reactive({
   previewRequest: null,
+  reviewCacheIds: { house: [], curtain: [] },
   sessions: {
     house: { file: null, supportFiles: { calculation: null, original: null }, organizationFiles: { calculation: [], original: [] }, reviewScope: '', url: null, status: 'idle', progress: 0, selectedRecord: null },
     curtain: { file: null, supportFiles: { calculation: null, original: null }, organizationFiles: { calculation: [], original: [] }, reviewScope: '', url: null, status: 'idle', progress: 0, selectedRecord: null }

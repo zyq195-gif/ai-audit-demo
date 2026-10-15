@@ -12,7 +12,7 @@
       <section class="work-card surface">
         <div class="card-heading">
           <div><span class="section-kicker">01 / 审核流程</span><h2>报告工作区</h2></div>
-          <div class="workspace-head-actions"><span class="state-pill" :class="reviewMode ? 'idle' : session.status">{{ statusLabel }}</span><button v-if="(reviewMode && selectedReviewRecord) || (organizationMode && currentRecord?.source === 'organization')" class="icon-button workspace-close-button" type="button" aria-label="关闭当前报告" title="关闭当前报告" @click="closeWorkspace"><X :size="19" :stroke-width="2.7" /></button></div>
+          <div class="workspace-head-actions"><button v-if="reviewMode" class="review-log-link" type="button" @click="reviewLogOpen = true">智能审查记录 <span v-if="reviewCacheRecords.length">{{ reviewCacheRecords.length }}</span></button><span class="state-pill" :class="reviewMode ? 'idle' : session.status">{{ statusLabel }}</span><button v-if="(reviewMode && selectedReviewRecord) || (organizationMode && currentRecord?.source === 'organization')" class="icon-button workspace-close-button" type="button" aria-label="关闭当前报告" title="关闭当前报告" @click="closeWorkspace"><X :size="19" :stroke-width="2.7" /></button></div>
         </div>
         <div class="stepper" aria-label="审核步骤">
           <div v-for="(step, index) in steps" :key="step" class="step" :class="{ done: stepIndex > index, active: stepIndex === index }">
@@ -30,7 +30,7 @@
           </div>
           <div v-else class="materials-grid"><div v-for="material in auditMaterials" :key="material.key" class="material-card review-material-card" :class="{ uploaded: selectedReviewRecord }"><span class="material-icon"><component :is="material.icon" :size="21" /></span><span class="material-title">{{ material.label }} <em>{{ selectedReviewRecord ? `${recordAttachmentNames(selectedReviewRecord, material.key).length} 份` : '待选择' }}</em></span><div class="review-material-files"><button v-for="(name, index) in recordAttachmentNames(selectedReviewRecord, material.key)" :key="`${name}-${index}`" type="button" :title="name" @click="openSubmissionFile(material.key, undefined, selectedReviewRecord, index)"><FileText :size="13" />{{ name }}</button><button v-if="!selectedReviewRecord" type="button" disabled><FileText :size="13" />选择待审报告后查看</button></div></div></div>
           <div v-if="selectedPendingIds.length && !reviewHasResult" class="review-selected-list" aria-label="已选待审报告"><div v-for="(record, index) in workspaceRecords" :key="record.id" class="review-selected-item" :class="{ active: record.id === selectedReviewRecord?.id }"><button class="review-selected-focus" type="button" :aria-pressed="record.id === selectedReviewRecord?.id" @click="focusReviewRecord(record)"><span class="review-selected-number">{{ String(index + 1).padStart(2, '0') }}</span><span class="review-selected-copy"><strong :title="record.name">{{ record.name }}</strong><small>{{ record.organization }} · {{ record.time }}</small></span><span class="review-selected-state">{{ record.id === selectedReviewRecord?.id ? '当前查看' : '点击查看' }}</span></button><button class="review-selected-remove" type="button" :aria-label="`取消选择 ${record.name}`" title="取消选择" @click="removeSelectedPending(record)"><X :size="15" /></button></div></div>
-          <div v-if="reviewBatchIds.length && selectedReviewRecord" class="review-page-nav"><span>审核结果 {{ reviewBatchIds.indexOf(selectedReviewRecord.id) + 1 }} / {{ reviewBatchIds.length }}</span><div><button type="button" :disabled="reviewBatchIds.indexOf(selectedReviewRecord.id) <= 0" @click="turnReviewPage(-1)">上一份</button><button type="button" :disabled="reviewBatchIds.indexOf(selectedReviewRecord.id) >= reviewBatchIds.length - 1" @click="turnReviewPage(1)">下一份</button></div></div>
+          <div v-if="completedCacheIds.includes(selectedReviewRecord?.id)" class="review-page-nav"><span>审核结果 {{ completedCacheIds.indexOf(selectedReviewRecord.id) + 1 }} / {{ completedCacheIds.length }}</span><div><button type="button" :disabled="completedCacheIds.indexOf(selectedReviewRecord.id) <= 0" @click="turnReviewPage(-1)">上一份</button><button type="button" :disabled="completedCacheIds.indexOf(selectedReviewRecord.id) >= completedCacheIds.length - 1" @click="turnReviewPage(1)">下一份</button></div></div>
           <div v-if="!selectedReviewRecord || selectedReviewRecord.status === 'pending'" class="review-start-row"><label class="review-scope province-review-scope"><span><strong>审查范围</strong><small>{{ selectedPendingIds.length ? `已选 ${selectedPendingIds.length} 份` : '选择待审报告' }}</small></span><select v-model="provinceScope" aria-label="审查范围" :disabled="!selectedPendingIds.length"><option value="" disabled>请选择审查范围</option><option v-for="scope in reviewScopes" :key="scope.value" :value="scope.value">{{ scope.label }}</option></select></label><button class="button button-primary" type="button" :disabled="!canBeginReview" @click="beginReview"><Play :size="16" fill="currentColor" /> 开始审查</button></div>
           <div v-if="selectedReviewRecord?.status === 'reviewing'" class="review-audit-status"><ScanSearch :size="22" /><span>正在审查鉴定报告并生成审核结果…</span><span class="review-audit-progress" aria-hidden="true"></span></div>
           <div v-if="selectedReviewRecord && ['reviewed', 'issued', 'completed'].includes(selectedReviewRecord.status)" class="result-panel review-result-panel"><div class="result-banner"><div class="result-check"><Check :size="23" /></div><div><span>{{ selectedReviewRecord.status === 'completed' ? '审核流程已完成' : selectedReviewRecord.status === 'issued' ? '审核意见已下发' : '审核已完成 · 待确认下发' }}</span><strong>发现 {{ activeIssues.length }} 项问题</strong></div><span class="result-time">{{ selectedReviewRecord.reviewedAt }}</span></div><div class="issue-snapshot"><div class="issue-snapshot-head"><span>主要问题摘要</span><button type="button" @click="previewReview">查看全部 <ArrowRight :size="14" /></button></div><div v-for="issue in activeIssues.slice(0, 2)" :key="issue.id" class="snapshot-row"><span class="issue-dot" :class="issue.level"></span><span>{{ issue.title }}</span><small>第 {{ issue.page }} 页</small></div></div></div>
@@ -83,7 +83,7 @@
     <section class="history-card surface" :class="{ 'review-history-card': reviewMode }">
       <div class="card-heading history-heading"><div><span class="section-kicker">03 / 历史记录</span><h2>近期审核记录</h2></div><div class="history-head-actions"><span class="history-count">共 {{ historyRecords.length }} 份报告</span><router-link class="standard-more" to="/records">查看台账 <ArrowRight :size="14" /></router-link></div></div>
       <div class="history-filter-row"><label class="search-box"><Search :size="16" /><input v-model="historyKeyword" type="search" placeholder="搜索报告、机构、文件、问题及时间" /></label><select v-model="historyStateFilter" aria-label="筛选记录状态"><option value="all">全部状态</option><option value="待下发">待下发</option><option value="已下发">已下发</option><option value="已完成">已完成</option></select><label class="history-date">从 <input v-model="historyStartDate" type="date" aria-label="开始日期" /></label><label class="history-date">至 <input v-model="historyEndDate" type="date" aria-label="结束日期" /></label></div>
-      <div class="history-table-wrap"><table class="history-table"><thead><tr><th>报告文件</th><th>提交时间</th><th>问题</th><th>状态</th><th>操作</th></tr></thead><tbody><tr v-for="record in historyRecords" :key="record.id"><td><div class="table-file"><span class="table-file-icon"><FileText :size="18" /></span><div><strong :title="record.name">{{ record.name }}</strong><small>{{ record.organization || '未标记机构' }}</small></div></div></td><td>{{ record.time }}</td><td><span v-if="isReviewed(record)"><span class="count-dot"></span>{{ detailIssues(record).length }} 项</span><span v-else>—</span></td><td><span class="table-status" :class="reportStatusClass(record)"><span></span>{{ historyStatus(record) }}</span></td><td><div class="history-actions"><button class="text-action" @click="detailRecord = record">查看详情 <ArrowUpRight :size="14" /></button><button v-if="reviewMode && record.status === 'reviewed'" class="text-action" @click="reReview(record)">重新审核</button><button v-if="reviewMode && record.status === 'reviewed'" class="text-action" @click="openHistoryReviewUpload(record)">上传审核报告</button><button v-if="organizationMode && record.status === 'issued'" class="text-action" @click="reuploadRecord(record)">重新上传</button></div></td></tr></tbody></table></div>
+      <div class="history-table-wrap"><table class="history-table"><thead><tr><th>报告文件</th><th>提交时间</th><th>问题</th><th>状态</th><th>操作</th></tr></thead><tbody><tr v-for="record in historyRecords" :key="record.id"><td><div class="table-file"><span class="table-file-icon"><FileText :size="18" /></span><div><strong :title="record.name">{{ record.name }}</strong><small>{{ record.organization || '未标记机构' }}</small></div></div></td><td>{{ record.time }}</td><td><span v-if="isReviewed(record)"><span class="count-dot"></span>{{ detailIssues(record).length }} 项</span><span v-else>—</span></td><td><span class="table-status" :class="reportStatusClass(record)"><span></span>{{ historyStatus(record) }}</span></td><td><div class="history-actions"><button class="text-action" @click="openDetail(record)">查看详情 <ArrowUpRight :size="14" /></button><button v-if="reviewMode && record.status === 'reviewed'" class="text-action" @click="reReview(record)">重新审核</button><button v-if="reviewMode && record.status === 'reviewed'" class="text-action" @click="openHistoryReviewUpload(record)">上传审核报告</button><button v-if="organizationMode && record.status === 'issued'" class="text-action" @click="reuploadRecord(record)">重新上传</button></div></td></tr></tbody></table></div>
     </section>
 
     <input ref="fileInput" class="visually-hidden" type="file" :accept="selectedAccept" :multiple="organizationMode && selectedMaterialType !== 'report'" @change="handleFileChange" />
@@ -92,15 +92,25 @@
     <div v-if="submissionPreview" class="modal-backdrop" @click.self="closeSubmissionPreview"><section ref="submissionPanel" class="management-modal review-file-modal" role="dialog" aria-modal="true" aria-label="查看提交材料"><div class="management-modal-head"><div><span class="section-kicker">机构提交材料</span><h2>{{ submissionPreview.name }}</h2></div><div class="pdf-head-actions"><button v-if="submissionPreview.type === 'pdf'" class="button button-secondary" type="button" @click="togglePdfFullscreen(submissionPanel)"><Maximize2 :size="15" /> 全屏查看</button><button class="icon-button" type="button" aria-label="关闭" @click="closeSubmissionPreview"><X :size="18" /></button></div></div><div class="review-file-body"><div v-if="submissionPreview.reference" class="demo-reference-note">同类型参考 PDF：{{ submissionPreview.referenceName }}。参考文件与当前报告名称及机构不一一对应。</div><iframe v-if="submissionPreview.type === 'pdf'" :src="submissionPreview.url" title="鉴定资料 PDF 预览"></iframe><video v-else-if="submissionPreview.type === 'video'" :src="submissionPreview.url" controls></video><div v-else-if="submissionPreview.type === 'demo'" class="demo-material-preview"><FileText :size="38" /><strong>{{ submissionPreview.name }}</strong><span>当前材料未配备可预览的 PDF。</span></div><p v-else>此格式请下载后查看。</p><div class="review-file-actions"><a v-if="submissionPreview.url" class="button button-secondary" :href="submissionPreview.url" :download="submissionPreview.referenceName || submissionPreview.name"><Download :size="15" /> 下载文件</a><button class="button button-primary" type="button" @click="closeSubmissionPreview">关闭</button></div></div></section></div>
 
     <div v-if="wordPreview" class="modal-backdrop word-preview-backdrop" @click.self="closeReviewWord"><section class="management-modal word-preview-modal" role="dialog" aria-modal="true" aria-label="审核报告 Word 附件"><div class="management-modal-head"><div><span class="section-kicker">已上传审核报告 / Word 附件</span><h2>{{ wordPreview.name }}</h2></div><button class="icon-button" type="button" aria-label="关闭" @click="closeReviewWord"><X :size="18" /></button></div><div class="word-preview-body"><p class="word-preview-meta">{{ wordPreview.size }} · 上传时间 {{ wordPreview.time }}</p><div v-if="wordPreview.loading" class="word-preview-empty">正在读取文档内容…</div><div v-else-if="wordPreview.paragraphs.length" class="word-preview-content"><p v-for="(paragraph, index) in wordPreview.paragraphs" :key="index">{{ paragraph }}</p></div><div v-else class="word-preview-empty"><FileText :size="34" /><strong>当前格式无法在浏览器内完整显示</strong><span>可以打开原文件，或下载后使用 Word 查看完整排版与内容。</span></div></div><div class="word-preview-footer"><a class="button button-secondary" :href="wordPreview.url" target="_blank" rel="noopener">打开原文件</a><a class="button button-primary" :href="wordPreview.url" :download="wordPreview.name"><Download :size="15" /> 下载附件</a></div></section></div>
-    <div v-if="detailRecord" class="modal-backdrop" @click.self="detailRecord = null">
+    <div v-if="reviewLogOpen" class="modal-backdrop" @click.self="reviewLogOpen = false">
+      <section class="management-modal review-log-modal" role="dialog" aria-modal="true" aria-label="智能审查记录">
+        <div class="management-modal-head"><div><span class="section-kicker">审查任务 / 当前页面</span><h2>智能审查记录</h2></div><button class="icon-button" type="button" aria-label="关闭" @click="reviewLogOpen = false"><X :size="18" /></button></div>
+        <div class="review-log-body">
+          <p class="review-log-intro">审查任务在后台继续运行。已完成的记录可打开工作区查看结果，并使用上一份、下一份切换。</p>
+          <div v-if="!reviewCacheRecords.length" class="review-log-empty"><ScanSearch :size="27" /><strong>暂无智能审查记录</strong><span>选择待审报告并开始审查后，进度会显示在这里。</span></div>
+          <button v-for="record in reviewCacheRecords" :key="record.id" class="review-log-item" type="button" :disabled="record.status === 'reviewing'" @click="openCachedReviewRecord(record)"><span class="review-log-icon"><ScanSearch v-if="record.status === 'reviewing'" :size="19" /><FileText v-else :size="19" /></span><span class="review-log-copy"><strong :title="record.name">{{ record.name }}</strong><small>{{ record.organization }} · {{ scopeName(record.reviewScope) }} · {{ record.reviewedAt || record.time }}</small></span><span class="review-log-status" :class="record.status">{{ record.status === 'reviewing' ? '核查中' : record.status === 'reviewed' ? '核查完毕' : recordStatus(record) }}</span><ChevronRight v-if="record.status !== 'reviewing'" :size="16" /></button>
+        </div>
+      </section>
+    </div>
+    <div v-if="detailRecord" class="modal-backdrop" @click.self="closeDetail">
       <section class="management-modal audit-detail-modal" role="dialog" aria-modal="true" aria-label="审核记录详情">
-        <div class="management-modal-head"><div><span class="section-kicker">审核记录详情 / {{ config.title }}</span><h2>{{ detailRecord.name }}</h2></div><button class="icon-button" type="button" aria-label="关闭" @click="detailRecord = null"><X :size="18" /></button></div>
+        <div class="management-modal-head"><div><span class="section-kicker">{{ detailMode === 'upload' ? '上传审核报告' : '审核记录详情' }} / {{ config.title }}</span><h2>{{ detailRecord.name }}</h2></div><button class="icon-button" type="button" aria-label="关闭" @click="closeDetail"><X :size="18" /></button></div>
         <div class="management-detail audit-detail-body">
-          <dl><div><dt>报告编号</dt><dd>{{ detailRecord.id }}</dd></div><div><dt>鉴定类型</dt><dd>{{ config.title }}</dd></div><div><dt>检测机构</dt><dd>{{ detailRecord.organization || '未标记机构' }}</dd></div><div><dt>当前版本</dt><dd>第 {{ detailRecord.versions?.at(-1)?.number || 1 }} 版</dd></div><div><dt>提交时间</dt><dd>{{ detailRecord.time }}</dd></div><div><dt>审核状态</dt><dd>{{ historyStatus(detailRecord) }}</dd></div><div><dt>核查范围</dt><dd>{{ scopeName(detailRecord.reviewScope) }}</dd></div><div><dt>审核完成时间</dt><dd>{{ detailRecord.reviewedAt || '未记录' }}</dd></div><div><dt>下发时间</dt><dd>{{ detailRecord.issuedAt || '未记录' }}</dd></div><div><dt>上传资料</dt><dd>{{ recordAttachmentNames(detailRecord, 'report').length + recordAttachmentNames(detailRecord, 'calculation').length + recordAttachmentNames(detailRecord, 'original').length }} 份</dd></div><div v-if="!organizationMode || detailRecord.status !== 'reviewed'"><dt>审核问题</dt><dd>{{ detailIssues(detailRecord).length }} 项</dd></div><div v-if="!organizationMode || detailRecord.status !== 'reviewed'"><dt>审核报告</dt><dd>{{ reviewReportLabel(detailRecord) }}</dd></div></dl>
+          <dl><div><dt>报告编号</dt><dd>{{ detailRecord.id }}</dd></div><div><dt>鉴定类型</dt><dd>{{ config.title }}</dd></div><div><dt>检测机构</dt><dd>{{ detailRecord.organization || '未标记机构' }}</dd></div><div><dt>当前版本</dt><dd>第 {{ detailRecord.versions?.at(-1)?.number || 1 }} 版</dd></div><div><dt>提交时间</dt><dd>{{ detailRecord.time }}</dd></div><div><dt>审核状态</dt><dd>{{ historyStatus(detailRecord) }}</dd></div><div><dt>核查范围</dt><dd>{{ scopeName(detailRecord.reviewScope) }}</dd></div><div><dt>审核完成时间</dt><dd>{{ detailRecord.reviewedAt || '未记录' }}</dd></div><div><dt>下发时间</dt><dd>{{ detailRecord.issuedAt || '未记录' }}</dd></div><div><dt>上传资料</dt><dd>{{ recordAttachmentNames(detailRecord, 'report').length + recordAttachmentNames(detailRecord, 'calculation').length + recordAttachmentNames(detailRecord, 'original').length }} 份</dd></div><div v-if="!organizationMode || detailRecord.status !== 'reviewed'"><dt>审核问题</dt><dd>{{ detailIssues(detailRecord).length }} 项</dd></div><div v-if="!organizationMode || detailRecord.status !== 'reviewed'"><dt>审核报告</dt><dd>{{ detailMode === 'upload' ? detailRecord.reviewReportName || '待上传 Word 附件' : reviewReportLabel(detailRecord) }}</dd></div></dl>
           <h3>上传资料</h3>
-          <div class="audit-detail-files"><div v-for="material in auditMaterials" :key="material.key" class="audit-detail-file-row"><strong>{{ material.label }}</strong><div><button v-for="(name, index) in recordAttachmentNames(detailRecord, material.key)" :key="`${name}-${index}`" type="button" @click="openSubmissionFile(material.key, undefined, detailRecord, index)"><FileText :size="15" /><span>{{ name }}</span><Eye :size="15" /></button><span v-if="!recordAttachmentNames(detailRecord, material.key).length">暂无文件</span></div></div><div v-if="(!organizationMode || detailRecord.status !== 'reviewed') && reviewReportLabel(detailRecord) !== '未生成'" class="audit-detail-file-row"><strong>审核报告</strong><div><button type="button" @click="downloadUploadedReviewReport(detailRecord)"><FileText :size="15" /><span>{{ reviewReportLabel(detailRecord) }}</span><Download :size="15" /></button></div></div></div>
+          <div class="audit-detail-files"><div v-for="material in auditMaterials" :key="material.key" class="audit-detail-file-row"><strong>{{ material.label }}</strong><div><button v-for="(name, index) in recordAttachmentNames(detailRecord, material.key)" :key="`${name}-${index}`" type="button" @click="openSubmissionFile(material.key, undefined, detailRecord, index)"><FileText :size="15" /><span>{{ name }}</span><Eye :size="15" /></button><span v-if="!recordAttachmentNames(detailRecord, material.key).length">暂无文件</span></div></div><div v-if="detailMode === 'upload' || ((!organizationMode || detailRecord.status !== 'reviewed') && reviewReportLabel(detailRecord) !== '未生成')" class="audit-detail-file-row"><strong>审核报告</strong><div><button v-if="detailRecord.reviewReportName" type="button" @click="openReviewWord(detailRecord)"><FileText :size="15" /><span>{{ detailRecord.reviewReportName }}</span><Eye :size="15" /></button><button v-else-if="detailMode !== 'upload'" type="button" @click="downloadUploadedReviewReport(detailRecord)"><FileText :size="15" /><span>{{ reviewReportLabel(detailRecord) }}</span><Download :size="15" /></button><button v-if="detailMode === 'upload'" class="audit-upload-word" type="button" :disabled="uploadingReviewReport" @click="reviewReportInput?.click()"><FileText :size="15" />{{ detailRecord.reviewReportName ? '更换审核报告' : '上传审核报告' }}</button></div></div></div>
           <h3 v-if="!organizationMode || detailRecord.status !== 'reviewed'">问题记录 <small>{{ detailIssues(detailRecord).length }} 项</small></h3><p v-if="(!organizationMode || detailRecord.status !== 'reviewed') && !detailIssues(detailRecord).length">暂无审核问题</p><div v-for="issue in visibleDetailIssues(detailRecord)" :key="issue.id" class="record-detail-issue"><strong>{{ issue.title }}</strong><span>第 {{ issue.page }} 页 · {{ issue.level === 'high' ? '重点关注' : '建议复核' }}</span><p v-if="issue.description">{{ issue.description }}</p><p v-if="issue.suggestion">处理建议：{{ issue.suggestion }}</p></div><div v-if="(!organizationMode || detailRecord.status !== 'reviewed') && detailRecord.reviewNote" class="record-detail-note"><strong>审核备注</strong><p>{{ detailRecord.reviewNote }}</p></div>
-          <div class="management-modal-foot"><button class="button button-primary" type="button" @click="detailRecord = null">关闭</button></div>
+          <div class="management-modal-foot"><button class="button button-primary" type="button" :disabled="detailMode === 'upload' && (!detailRecord.reviewReportName || uploadingReviewReport || detailRecord.status !== 'reviewed')" @click="detailMode === 'upload' ? confirmUploadAndIssue() : closeDetail()">{{ detailMode === 'upload' ? '确认并下发' : '关闭' }}</button></div>
         </div>
       </section>
     </div>
@@ -164,8 +174,10 @@ const historyRecords = computed(() => {
 })
 const selectedReviewRecord = ref(null)
 const selectedPendingIds = ref([])
-const reviewBatchIds = ref([])
 const handledBatchIds = ref([])
+const reviewLogOpen = ref(false)
+const detailMode = ref('view')
+const uploadingReviewReport = ref(false)
 const submissionPreview = ref(null)
 const wordPreview = ref(null)
 const detailRecord = ref(null)
@@ -177,8 +189,9 @@ const pendingRecords = computed(() => reviewQueue.value.filter(record => record.
 const organizationUnreviewedRecords = computed(() => props.organizationMode ? records.value.filter(record => record.source === 'organization' && ['pending', 'reviewing'].includes(record.status)) : [])
 const filteredPendingRecords = computed(() => pendingRecords.value.filter(record => !queueKeyword.value || reportSearchText(record).includes(queueKeyword.value.trim().toLocaleLowerCase())))
 const filteredOrganizationPending = computed(() => organizationUnreviewedRecords.value.filter(record => !queueKeyword.value || reportSearchText(record).includes(queueKeyword.value.trim().toLocaleLowerCase())))
+const reviewCacheRecords = computed(() => (auditStore.reviewCacheIds[props.kind] || []).map(id => records.value.find(record => record.id === id)).filter(record => record && ['reviewing', 'reviewed', 'issued', 'completed'].includes(record.status)))
+const completedCacheIds = computed(() => reviewCacheRecords.value.filter(record => ['reviewed', 'issued', 'completed'].includes(record.status)).map(record => record.id))
 const workspaceRecords = computed(() => {
-  if (reviewBatchIds.value.length) return reviewBatchIds.value.map(id => records.value.find(record => record.id === id)).filter(Boolean)
   if (!selectedPendingIds.value.length) return selectedReviewRecord.value ? [selectedReviewRecord.value] : []
   const pendingById = new Map(pendingRecords.value.map(record => [record.id, record]))
   return selectedPendingIds.value.map(id => pendingById.get(id)).filter(Boolean)
@@ -287,7 +300,6 @@ function closeWorkspace() {
   if (props.reviewMode) {
     selectedReviewRecord.value = null
     selectedPendingIds.value = []
-    reviewBatchIds.value = []
     handledBatchIds.value = []
     provinceScope.value = ''
     openedFromHistory.value = false
@@ -343,7 +355,6 @@ function selectReviewRecord(record) {
   dispatchOutcome.value = 'revise'
   openedFromHistory.value = false
   if (record.status === 'pending') {
-    reviewBatchIds.value = []
     handledBatchIds.value = []
     const ids = selectedPendingIds.value
     selectedPendingIds.value = ids.includes(record.id) ? ids.filter(id => id !== record.id) : [...ids, record.id]
@@ -351,7 +362,6 @@ function selectReviewRecord(record) {
     selectedReviewRecord.value = lastId ? pendingRecords.value.find(item => item.id === lastId) || null : null
     if (!lastId) provinceScope.value = ''
   } else {
-    reviewBatchIds.value = []
     handledBatchIds.value = []
     selectedPendingIds.value = []
     selectedReviewRecord.value = record
@@ -381,7 +391,7 @@ function beginReview() {
   const selected = pendingRecords.value.filter(record => selectedPendingIds.value.includes(record.id))
   const started = selected.filter(record => reviewOrganizationAudit(props.kind, record, provinceScope.value))
   if (!started.length) return
-  reviewBatchIds.value = started.map(record => record.id)
+  auditStore.reviewCacheIds[props.kind] = [...new Set([...(auditStore.reviewCacheIds[props.kind] || []), ...started.map(record => record.id)])]
   handledBatchIds.value = []
   selectedReviewRecord.value = started[0]
   openedFromHistory.value = false
@@ -389,21 +399,20 @@ function beginReview() {
   flash(`已开始审查 ${started.length} 份报告。`)
 }
 function turnReviewPage(direction) {
-  const index = reviewBatchIds.value.indexOf(selectedReviewRecord.value?.id)
-  const record = records.value.find(item => item.id === reviewBatchIds.value[index + direction])
+  const index = completedCacheIds.value.indexOf(selectedReviewRecord.value?.id)
+  const record = records.value.find(item => item.id === completedCacheIds.value[index + direction])
   if (record) focusReviewRecord(record)
 }
 function advanceReviewResult() {
-  const index = reviewBatchIds.value.indexOf(selectedReviewRecord.value?.id)
+  const index = completedCacheIds.value.indexOf(selectedReviewRecord.value?.id)
   if (selectedReviewRecord.value && index >= 0) handledBatchIds.value = [...handledBatchIds.value, selectedReviewRecord.value.id]
-  const remaining = [...reviewBatchIds.value.slice(index + 1), ...reviewBatchIds.value.slice(0, index)]
-  const next = remaining.filter(id => !handledBatchIds.value.includes(id)).map(id => records.value.find(record => record.id === id)).find(Boolean)
+  const remaining = [...completedCacheIds.value.slice(index + 1), ...completedCacheIds.value.slice(0, Math.max(0, index))]
+  const next = remaining.filter(id => !handledBatchIds.value.includes(id)).map(id => records.value.find(record => record.id === id)).find(record => record?.status === 'reviewed')
   showPreview.value = false
   previewedVersion.value = null
   if (next) selectedReviewRecord.value = next
   else {
     selectedReviewRecord.value = null
-    reviewBatchIds.value = []
     handledBatchIds.value = []
     selectedPendingIds.value = []
     provinceScope.value = ''
@@ -436,12 +445,15 @@ async function chooseReviewReport(event) {
   if (!file) return
   if (!/\.docx?$/i.test(file.name)) return flash('请选择 Word 格式的审核报告。')
   if (file.size > 100 * 1024 * 1024) return flash('文件超过 100 MB。')
+  const target = detailMode.value === 'upload' ? detailRecord.value : selectedReviewRecord.value
+  if (!target || target.status !== 'reviewed') return flash('请选择待下发的报告。')
+  uploadingReviewReport.value = true
   try {
-    if (await saveReviewReportFile(props.kind, selectedReviewRecord.value, file)) {
-      previewedVersion.value = null
+    if (await saveReviewReportFile(props.kind, target, file)) {
       flash('审核报告已上传，可以确认并下发。')
     }
   } catch { flash('审核报告保存失败，请重试。') }
+  finally { uploadingReviewReport.value = false }
 }
 async function downloadUploadedReviewReport(record = selectedReviewRecord.value) {
   if (record?.demo || record?.source !== 'organization') { createAuditWord({ ...record, reviewScopeLabel: scopeName(record.reviewScope) }, config.value.title); return }
@@ -541,10 +553,27 @@ function selectHistory(record) {
   showPreview.value = (!props.reviewMode || record.source === 'sample') && isReviewed(record)
   if (props.reviewMode) document.querySelector('.review-workspace')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
-async function openHistoryReviewUpload(record) {
-  selectHistory(record)
-  await nextTick()
-  reviewReportInput.value?.click()
+function openDetail(record) { detailMode.value = 'view'; detailRecord.value = record }
+function closeDetail() { detailRecord.value = null; detailMode.value = 'view' }
+function openHistoryReviewUpload(record) {
+  if (record.status !== 'reviewed') return
+  detailMode.value = 'upload'
+  detailRecord.value = record
+}
+function confirmUploadAndIssue() {
+  const record = detailRecord.value
+  if (!record || record.status !== 'reviewed' || !record.reviewReportName || uploadingReviewReport.value) return
+  if (!issueOrganizationAudit(props.kind, record, 'revise')) return flash('下发失败，请稍后重试。')
+  closeDetail()
+  flash('已下发修改意见，机构可重新上传。')
+}
+function openCachedReviewRecord(record) {
+  if (!['reviewed', 'issued', 'completed'].includes(record.status)) return
+  selectedPendingIds.value = []
+  provinceScope.value = record.reviewScope || ''
+  focusReviewRecord(record)
+  reviewLogOpen.value = false
+  nextTick(() => document.querySelector('.review-workspace')?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
 }
 function downloadReport() {
   if (!currentRecord.value || !isReviewed(currentRecord.value)) return
@@ -565,7 +594,7 @@ watch(() => [showPreview.value, props.kind, currentRecord.value?.id, currentReco
     else storedReportPreviewUrl.value = url
   } catch { /* report may no longer be stored in this browser */ }
 })
-watch(() => props.kind, () => { dispatchMenuOpen.value = false; revisionMode.value = false; revisionEntries.value = { report: [], calculation: [], original: [] }; selectedReviewRecord.value = null; selectedPendingIds.value = []; reviewBatchIds.value = []; handledBatchIds.value = []; provinceScope.value = ''; openedFromHistory.value = false; previewedVersion.value = null; showPreview.value = false; closeSubmissionPreview(); closeReviewWord() })
+watch(() => props.kind, () => { dispatchMenuOpen.value = false; revisionMode.value = false; revisionEntries.value = { report: [], calculation: [], original: [] }; selectedReviewRecord.value = null; selectedPendingIds.value = []; handledBatchIds.value = []; provinceScope.value = ''; openedFromHistory.value = false; previewedVersion.value = null; showPreview.value = false; reviewLogOpen.value = false; closeDetail(); closeSubmissionPreview(); closeReviewWord() })
 watch(() => selectedReviewRecord.value?.id, () => { dispatchMenuOpen.value = false })
 watch(() => auditStore.previewRequest, (request) => {
   if (request?.kind !== props.kind) return
@@ -641,5 +670,7 @@ onBeforeUnmount(() => { document.removeEventListener('pointerdown', closeDispatc
 .revision-note{width:100%;min-height:64px;padding:10px 12px;border:1px solid #ceddf7;border-radius:9px;background:#fff;color:#40516b;font:inherit;font-size:11px;resize:vertical}
 .dispatch-combo{position:relative;display:flex;min-width:0;z-index:5}.dispatch-combo>.button{min-width:0;flex:1;border-radius:9px 0 0 9px;white-space:nowrap}.dispatch-combo small{font-size:10px;font-weight:500;opacity:.85}.dispatch-trigger{display:grid;place-items:center;flex:none;width:32px;border:0;border-left:1px solid rgba(255,255,255,.35);border-radius:0 9px 9px 0;background:#235fd6;color:#fff;cursor:pointer}.dispatch-trigger:hover,.dispatch-trigger[aria-expanded="true"]{background:#174cb6}.dispatch-popover{position:absolute;right:0;bottom:calc(100% + 10px);display:grid;gap:3px;width:270px;padding:8px;border:1px solid #dce7f8;border-radius:13px;background:#fff;box-shadow:0 14px 36px rgba(27,53,102,.18);text-align:left}.dispatch-popover::after{position:absolute;right:12px;bottom:-6px;width:10px;height:10px;border-right:1px solid #dce7f8;border-bottom:1px solid #dce7f8;background:#fff;content:"";transform:rotate(45deg)}.dispatch-popover-title{padding:5px 9px 7px;color:#8b98aa;font-size:11px;font-weight:700}.dispatch-popover button{display:flex;align-items:center;gap:9px;min-width:0;padding:9px;border:1px solid transparent;border-radius:9px;background:#fff;color:#30425c;text-align:left;cursor:pointer}.dispatch-popover button:hover,.dispatch-popover button.selected{border-color:#d7e5fb;background:#f4f8ff}.dispatch-option-icon{display:grid;place-items:center;flex:none;width:30px;height:30px;border-radius:9px}.dispatch-option-icon.revise{background:#f0ecff;color:#7d5fce}.dispatch-option-icon.approved{background:#e7f8f3;color:#16a489}.dispatch-option-copy{display:grid;gap:2px;flex:1;min-width:0}.dispatch-option-copy strong{font-size:12px}.dispatch-option-copy small{color:#8b98aa;font-size:10px;font-weight:400;white-space:nowrap}.dispatch-option-check{flex:none;color:#235fd6}.review-action-buttons.ready-to-issue .dispatch-combo{width:190px;max-width:calc(50% - 5px)}
 .workspace-close-button{width:39px;height:39px;border:1px solid #a9c4f4;border-radius:10px;background:#eaf1ff;color:#235fd6;box-shadow:0 2px 8px rgba(35,95,214,.12);cursor:pointer;transition:background .15s,border-color .15s,box-shadow .15s}.workspace-close-button:hover{border-color:#235fd6;background:#dce9ff;color:#174cb6;box-shadow:0 3px 11px rgba(35,95,214,.2)}.workspace-close-button:focus-visible{outline:3px solid #93b7f6;outline-offset:2px}
+.review-log-link{display:inline-flex;align-items:center;gap:7px;padding:7px 10px;border:0;border-radius:8px;background:transparent;color:#235fd6;font-size:12px;font-weight:700;cursor:pointer}.review-log-link:hover{background:#edf4ff}.review-log-link span{display:grid;place-items:center;min-width:20px;height:20px;padding:0 5px;border-radius:10px;background:#eaf1ff;font-size:10px}.review-log-modal{display:flex;flex-direction:column;width:min(760px,96vw);max-height:min(80vh,760px)}.review-log-body{min-height:0;overflow:auto;padding:18px 24px 24px}.review-log-intro{margin:0 0 14px;color:#73839b;font-size:12px;line-height:1.6}.review-log-empty{display:grid;justify-items:center;gap:8px;padding:45px 15px;border:1px dashed #d5e2f7;border-radius:12px;color:#8998ae;text-align:center}.review-log-empty strong{color:#40516b;font-size:13px}.review-log-empty span{font-size:11px}.review-log-item{display:flex;align-items:center;gap:12px;width:100%;margin-top:8px;padding:12px 14px;border:1px solid #e0e9f8;border-radius:11px;background:#fff;text-align:left;color:#235fd6;cursor:pointer}.review-log-item:hover:not(:disabled){border-color:#a8c5f7;background:#f6f9ff}.review-log-item:disabled{cursor:default;background:#f8faff}.review-log-icon{display:grid;place-items:center;flex:none;width:36px;height:36px;border-radius:9px;background:#eaf1ff}.review-log-copy{display:grid;gap:5px;flex:1;min-width:0}.review-log-copy strong,.review-log-copy small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.review-log-copy strong{color:#30425c;font-size:12px}.review-log-copy small{color:#8796aa;font-size:10px}.review-log-status{flex:none;padding:5px 9px;border-radius:20px;background:#eaf1ff;color:#235fd6;font-size:10px;font-weight:700}.review-log-status.reviewing{background:#fff4df;color:#ac741d}.review-log-status.issued{background:#f0eaff;color:#7d5fce}.review-log-status.completed{background:#e5f7f2;color:#179b80}.audit-detail-file-row button.audit-upload-word{border-color:#235fd6;background:#235fd6;color:#fff;font-weight:700}.audit-detail-file-row button.audit-upload-word:hover{background:#1b51bf}.audit-detail-file-row button.audit-upload-word:disabled{opacity:.6;cursor:wait}
+.audit-detail-file-row button.audit-upload-word{min-height:38px;padding:9px 15px;border-color:#235fd6;background:#235fd6;color:#fff;font-size:12px;font-weight:700;box-shadow:0 5px 13px rgba(35,95,214,.22);transition:background .16s,box-shadow .16s,transform .16s}.audit-detail-file-row button.audit-upload-word svg{color:#fff;stroke:#fff}.audit-detail-file-row button.audit-upload-word:hover:not(:disabled){border-color:#174cb6;background:#174cb6;box-shadow:0 7px 17px rgba(35,95,214,.28);transform:translateY(-1px)}.audit-detail-file-row button.audit-upload-word:focus-visible{outline:3px solid #9fc1fb;outline-offset:2px}
 </style>
 
