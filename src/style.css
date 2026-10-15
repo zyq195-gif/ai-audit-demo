@@ -259,6 +259,7 @@ button:focus-visible,a:focus-visible{outline:3px solid #DAE2EF;outline-offset:3p
 .code-line,.edition-line{display:block;overflow:hidden;text-overflow:ellipsis}.code-line{color:#235FD6;font-weight:700}.edition-line{font-size:9px;color:#8B98AA;margin-top:4px}
 .table-status.inactive{background:#F5F7FB;color:#8B98AA}.table-status.inactive span{background:#AEB8C7}
 .table-status.audit-pending{background:#f5f7fb;color:#8b98aa}.table-status.audit-pending span{background:#aeb8c7}
+.table-status.audit-reviewing{background:#eaf2ff;color:#2867c8}.table-status.audit-reviewing span{background:#4d8be9}
 .table-status.audit-reviewed{background:#f1edff;color:#7554d1}.table-status.audit-reviewed span{background:#8768df}
 .table-status.audit-issued{background:#e8f7f3;color:#187b6b}.table-status.audit-issued span{background:#29a38e}
 .record-detail-issue,.record-detail-note{padding:11px 13px;margin:8px 0;border:1px solid #e5ecf8;border-radius:10px;background:#f9fbff;color:#60728b;font-size:11px;line-height:1.6}

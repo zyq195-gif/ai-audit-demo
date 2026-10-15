@@ -32,17 +32,18 @@ const formerAccountIds = new Map([['zhangsan', 'admin'], ['lisi', 'user'], ['wan
 function migrateDemoAccounts(rows) {
   return rows.map(row => {
     const replacement = formerDemoAccounts.get(`${row[2]}:${row[0]}`)
-    return replacement && !rows.some(other => other !== row && other[2] === row[2] && other[0] === replacement)
+    const migrated = replacement && !rows.some(other => other !== row && other[2] === row[2] && other[0] === replacement)
       ? [replacement, ...row.slice(1)] : row
+    return [migrated[0], migrated[1], migrated[2] === '省总站' ? '监管部门' : migrated[2], migrated[3] === '省站监管人员' ? '监管人员' : migrated[3], migrated[4]]
   })
 }
-const storedUser = saved.user?.account ? { ...saved.user, account: formerDemoAccounts.get(`${saved.user.org}:${saved.user.account}`) || saved.user.account, perms: [...new Set([...(saved.user.perms || []).filter(view => view !== 'collect'), 'ledger', ...(saved.user.role === 'org' ? ['orgIssues', 'orgHouse', 'orgField'] : [])])] } : null
+const storedUser = saved.user?.account ? { ...saved.user, account: formerDemoAccounts.get(`${saved.user.org}:${saved.user.account}`) || saved.user.account, org: saved.user.org === '省总站' ? '监管部门' : saved.user.org, roleName: saved.user.roleName === '省站监管人员' ? '监管人员' : saved.user.roleName, perms: [...new Set([...(saved.user.perms || []).filter(view => view !== 'collect'), 'ledger', ...(saved.user.role === 'org' ? ['orgIssues', 'orgHouse', 'orgField'] : [])])] } : null
 function migrateOrganizationRoles(rows) {
   return rows.map(row => {
     const mods = row.mods?.includes('数据采集')
       ? [...row.mods.filter(name => name !== '数据采集'), '房屋安全鉴定', '幕墙安全鉴定']
       : row.mods?.map(name => name === '现场检测' ? '幕墙安全鉴定' : name)
-    return { ...row, mods: [...new Set([...(mods || []).map(name => name === '问题驾驶舱' ? '监管驾驶舱' : name), '台账记录'])] }
+    return { ...row, name: row.name === '省站监管人员' ? '监管人员' : row.name, desc: row.desc?.replaceAll('省站', '监管人员').replaceAll('省级监管', '监管') || '', mods: [...new Set([...(mods || []).map(name => name === '问题驾驶舱' ? '监管驾驶舱' : name), '台账记录'])] }
   })
 }
 function migrateAuditMenus(rows) {
@@ -99,7 +100,7 @@ export function loginAccount(account, password, selectedRole = '') {
   if (matches.length > 1) return { ok: false, message: '账号 ID 重复，请联系管理员处理' }
   if (matches.length !== 1 || password !== '123456') return { ok: false, message: '账号或密码不正确' }
   const accountRow = matches[0]
-  if (accountRow[2] !== '省总站' && !activeOrganizationNames().includes(accountRow[2])) return { ok: false, message: '所属机构不可用' }
+  if (accountRow[2] !== '监管部门' && !activeOrganizationNames().includes(accountRow[2])) return { ok: false, message: '所属机构不可用' }
   if (accountRow[4] !== '启用') return { ok: false, message: '该账号已停用' }
   const configured = provincialState.roles.find(item => item.name === accountRow[3] && item.st === '启用')
   if (!configured) return { ok: false, message: '该账号的角色不可用' }

@@ -435,12 +435,16 @@ export function reviewOrganizationAudit(kind, record, scope) {
   if (record?.source !== 'organization' || record.status !== 'pending' || !scope) return false
   record.status = 'reviewing'
   record.reviewScope = scope
+  record.reviewProgress = 0
   const version = record.versions?.at(-1)
   if (version) { version.status = 'reviewing'; version.reviewScope = scope }
   persistRecords(kind)
+  const progressTimer = setInterval(() => { record.reviewProgress = Math.min(90, (record.reviewProgress || 0) + 10) }, 320)
   setTimeout(() => {
+    clearInterval(progressTimer)
     record.issues = issueTemplates[kind].map(issue => ({ ...issue }))
     record.status = 'reviewed'
+    record.reviewProgress = 100
     record.reviewedAt = stamp()
     if (version) { version.status = 'reviewed'; version.issues = record.issues.map(issue => ({ ...issue })); version.reviewedAt = record.reviewedAt }
     persistRecords(kind)

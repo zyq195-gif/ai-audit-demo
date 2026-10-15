@@ -14,15 +14,17 @@ export function reportStatusClass(record) {
   if (record.status === 'issued' && record.deliveryOutcome === 'revise') return 'audit-returned'
   if (record.source !== 'organization' || record.status === 'completed' || record.status === 'issued') return 'audit-issued'
   if (record.status === 'reviewed') return 'audit-reviewed'
-  if (record.status === 'pending' || record.status === 'reviewing') return 'audit-pending'
+  if (record.status === 'reviewing') return 'audit-reviewing'
+  if (record.status === 'pending') return 'audit-pending'
   return ''
 }
 
 export function reportStatusRank(record) {
   if (record.source !== 'organization') return 3
-  if (record.status === 'pending' || record.status === 'reviewing') return 0
-  if (record.status === 'reviewed') return 1
-  if (record.status === 'issued') return 2
-  if (record.status === 'completed') return 3
-  return 4
+  if (record.status === 'pending') return 0
+  if (record.status === 'reviewing') return 1
+  if (record.status === 'reviewed') return 2
+  if (record.status === 'issued') return 3
+  if (record.status === 'completed') return 4
+  return 5
 }

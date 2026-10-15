@@ -34,7 +34,7 @@ import { reportStatusRank } from '../utils/reportRecords'
 
 const metrics = computed(() => [
   { label: '接入检测机构', value: provincialState.organizations.filter(item => item[2] === '启用').length, unit: '家', note: `已启用 / 共登记 ${provincialState.organizations.length} 家`, tone: 'indigo', icon: Building2 },
-  { label: '待审报告', value: organizationReports.value.filter(record => ['pending', 'reviewing'].includes(record.status)).length, unit: '份', note: '机构提交后等待省站审查', tone: 'teal', icon: Database },
+  { label: '待审报告', value: organizationReports.value.filter(record => ['pending', 'reviewing'].includes(record.status)).length, unit: '份', note: '机构提交后等待监管审查', tone: 'teal', icon: Database },
   { label: '已完成报告', value: organizationReports.value.filter(record => record.status === 'completed').length, unit: '份', note: '审核结果已确认并下发', tone: 'cyan', icon: ClipboardCheck },
   { label: '待下发报告', value: organizationReports.value.filter(record => record.status === 'reviewed').length, unit: '份', note: '需上传或确认审核报告', tone: 'amber', icon: TriangleAlert }
 ])

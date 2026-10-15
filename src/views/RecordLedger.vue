@@ -44,7 +44,7 @@ const organizations = computed(() => [...new Set(records.value.map(entry => entr
 const filtered = computed(() => records.value.filter(({ kind: type, record }) => (kind.value === 'all' || kind.value === type) && (organization.value === 'all' || record.organization === organization.value) && (status.value === 'all' || (record.status || 'issued') === status.value) && (!startDate.value || record.time.slice(0, 10) >= startDate.value) && (!endDate.value || record.time.slice(0, 10) <= endDate.value) && (!keyword.value || reportSearchText(record).includes(keyword.value.trim().toLocaleLowerCase()))).sort((a, b) => reportStatusRank(a.record) - reportStatusRank(b.record) || String(b.record.time).localeCompare(String(a.record.time))))
 const metrics = computed(() => [
   { label: '报告总数', value: records.value.length, note: '当前权限可见的全部记录', tone: 'indigo', icon: FileText },
-  { label: '待审核', value: records.value.filter(entry => entry.record.status === 'pending').length, note: '已提交，等待省站审查', tone: 'teal', icon: ClipboardList },
+  { label: '待审核', value: records.value.filter(entry => entry.record.status === 'pending').length, note: '已提交，等待监管审查', tone: 'teal', icon: ClipboardList },
   { label: '待下发', value: records.value.filter(entry => entry.record.status === 'reviewed').length, note: '审核完成，等待结果下发', tone: 'cyan', icon: ClipboardList },
   { label: '已下发', value: records.value.filter(entry => entry.record.status === 'issued' && entry.record.source === 'organization').length, note: '审核意见已送达机构，等待修正', tone: 'amber', icon: ClipboardList },
   { label: '已完成', value: records.value.filter(entry => entry.record.status === 'completed' || entry.record.source !== 'organization').length, note: '审核无误，流程结束', tone: 'cyan', icon: CheckCircle2 }

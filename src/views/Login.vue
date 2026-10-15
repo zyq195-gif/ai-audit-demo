@@ -23,12 +23,12 @@
       <div class="mobile-brand"><span class="mobile-logo"><img :src="companyLogo" alt="" /></span><strong>ReportAudit <em>AI</em></strong></div>
       <span class="login-kicker">欢迎使用 · 智能监管工作台</span><h1 id="login-title">登录系统</h1><p class="login-description">请选择工作权限，使用对应账号进入工作台。</p>
       <form class="login-form" @submit.prevent="submit">
-        <fieldset class="role-picker"><legend>工作权限</legend><div class="role-options"><button type="button" class="role-option" :class="{ selected: role === '省站监管人员' }" :aria-pressed="role === '省站监管人员'" @click="chooseRole('省站监管人员')"><span class="role-icon"><Landmark :size="19" /></span><strong>省站监管人员</strong><small>省级监管 · 全量权限</small></button><button type="button" class="role-option" :class="{ selected: role === '检测机构人员' }" :aria-pressed="role === '检测机构人员'" @click="chooseRole('检测机构人员')"><span class="role-icon"><Building2 :size="19" /></span><strong>检测机构人员</strong><small>本机构 · 受限权限</small></button></div></fieldset>
+        <fieldset class="role-picker"><legend>工作权限</legend><div class="role-options"><button type="button" class="role-option" :class="{ selected: role === '监管人员' }" :aria-pressed="role === '监管人员'" @click="chooseRole('监管人员')"><span class="role-icon"><Landmark :size="19" /></span><strong>监管人员</strong><small>全域监管 · 全量权限</small></button><button type="button" class="role-option" :class="{ selected: role === '检测机构人员' }" :aria-pressed="role === '检测机构人员'" @click="chooseRole('检测机构人员')"><span class="role-icon"><Building2 :size="19" /></span><strong>检测机构人员</strong><small>本机构 · 受限权限</small></button></div></fieldset>
         <label class="login-field"><span>账号 ID</span><input v-model.trim="account" autocomplete="username" placeholder="请输入账号 ID" required /></label>
         <label class="login-field"><span>密码</span><input v-model="password" type="password" autocomplete="current-password" placeholder="请输入密码" required /></label>
         <p v-if="error" class="login-error" role="alert">{{ error }}</p><button class="login-submit" type="submit">登录工作台 <ArrowRight :size="18" /></button>
       </form>
-      <div class="login-demo"><span>预置账号</span><strong>{{ role === '省站监管人员' ? 'admin' : 'user' }}</strong><small>密码 123456</small><button type="button" @click="fillDemo">一键填入 <ArrowRight :size="13" /></button></div>
+      <div class="login-demo"><span>预置账号</span><strong>{{ role === '监管人员' ? 'admin' : 'user' }}</strong><small>密码 123456</small><button type="button" @click="fillDemo">一键填入 <ArrowRight :size="13" /></button></div>
     </div></section>
   </main>
 </template>
@@ -41,13 +41,13 @@ import companyLogo from '../assets/company-logo.png'
 import { loginAccount, provincialRoutes, visibleMenus } from '../state/provincialState'
 
 const router = useRouter()
-const role = ref('省站监管人员')
+const role = ref('监管人员')
 const account = ref('')
 const password = ref('')
 const error = ref('')
 function chooseRole(value) { role.value = value; account.value = ''; password.value = ''; error.value = '' }
 function fillDemo() {
-  account.value = role.value === '省站监管人员' ? 'admin' : 'user'
+  account.value = role.value === '监管人员' ? 'admin' : 'user'
   password.value = '123456'
   error.value = ''
 }

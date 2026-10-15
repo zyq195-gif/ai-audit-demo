@@ -117,7 +117,7 @@ export const trend = [210,260,240,300,280,330,312];
 export const ORGS = ["省建科院检测中心","福州市检测中心","厦门市检测院","泉州市建科院","漳州市质检所","南平市检测中心","龙岩市检测中心","宁德市检测中心"];
 
 export const ROLE_META = {
-  prov:{name:"省站监管人员",roleName:"省级监管 · 管理员",scope:"全省",perms:["dash","collect","screen","rule","sys"],badge:"prov",avatar:"省"},
+  prov:{name:"监管人员",roleName:"监管人员 · 管理员",scope:"全省",perms:["dash","collect","screen","rule","sys"],badge:"prov",avatar:"监"},
   org:{name:"检测机构人员",roleName:"检测机构 · 经办人",scope:"本机构",perms:["collect"],badge:"org",avatar:"检"}
 };
 
@@ -126,8 +126,8 @@ export const PERM_NAMES = {dash:"监管驾驶舱",orgIssues:"监管驾驶舱",co
 export const SYS_MODULES = ["监管驾驶舱","房屋安全鉴定","幕墙安全鉴定","知识库及规则配置","台账记录","系统管理"];
 
 export const sysRoles = [
-  {name:"省站监管人员",scope:"全省",st:"启用",builtin:true,mods:["监管驾驶舱","房屋安全鉴定","幕墙安全鉴定","知识库及规则配置","台账记录","系统管理"],desc:"省级监管全量权限，可核查、下发结果并维护规则"},
-  {name:"检测机构人员",scope:"本机构",st:"启用",mods:["监管驾驶舱","房屋安全鉴定","幕墙安全鉴定","台账记录"],desc:"仅本机构数据，上传鉴定报告、计算书和原始文件并提交省站审核"},
+  {name:"监管人员",scope:"全省",st:"启用",builtin:true,mods:["监管驾驶舱","房屋安全鉴定","幕墙安全鉴定","知识库及规则配置","台账记录","系统管理"],desc:"监管全量权限，可核查、下发结果并维护规则"},
+  {name:"检测机构人员",scope:"本机构",st:"启用",mods:["监管驾驶舱","房屋安全鉴定","幕墙安全鉴定","台账记录"],desc:"仅本机构数据，上传鉴定报告、计算书和原始文件并提交监管人员审核"},
   {name:"地市监管人员",scope:"全省",st:"停用",mods:["监管驾驶舱","数据采集","AI核查"],desc:"地市级监管权限，不可进入系统管理与知识库及规则配置"}
 ];
 
@@ -143,7 +143,7 @@ export const sysOrgs = [
 ];
 
 export const sysUsers = [
-  ["admin","张三","省总站","省站监管人员","启用"],
+  ["admin","张三","监管部门","监管人员","启用"],
   ["user","李四","福州市检测中心","检测机构人员","启用"],
   ["user2","王五","厦门市检测院","检测机构人员","启用"],
   ["user3","赵六","泉州市建科院","检测机构人员","启用"],

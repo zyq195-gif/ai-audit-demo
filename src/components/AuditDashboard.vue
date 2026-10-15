@@ -8,11 +8,15 @@
       </article>
     </section>
 
-    <div class="content-grid">
+    <section v-if="reviewMode" class="surface province-flow-strip">
+      <div class="card-heading"><div><span class="section-kicker">01 / 报告审核流程</span><h2>审核节点</h2><p class="flow-selected-name">{{ selectedReviewRecord ? selectedReviewRecord.name : '点击下方记录，查看对应报告的审核节点' }}</p></div><div class="workspace-head-actions"><span class="history-count">{{ selectedReviewRecord ? historyStatus(selectedReviewRecord) : '等待选择' }}</span></div></div>
+      <div class="province-node-list"><div v-for="(node, index) in provinceNodes" :key="node.label" class="province-node" :class="{ reached: selectedReviewRecord && provinceNodeIndex(selectedReviewRecord) > index, current: selectedReviewRecord && provinceNodeIndex(selectedReviewRecord) === index }"><span class="province-node-number"><Check v-if="selectedReviewRecord && provinceNodeIndex(selectedReviewRecord) > index" :size="14" />{{ selectedReviewRecord && provinceNodeIndex(selectedReviewRecord) > index ? '' : String(index + 1).padStart(2, '0') }}</span><div><strong>{{ node.label }}</strong><small>{{ node.note }}</small></div><em>{{ provinceStatusCount(node.status) }} 份</em></div></div>
+    </section>
+    <div v-else class="content-grid">
       <section class="work-card surface">
         <div class="card-heading">
           <div><span class="section-kicker">01 / 审核流程</span><h2>报告工作区</h2></div>
-          <div class="workspace-head-actions"><button v-if="reviewMode" class="review-log-link" type="button" @click="reviewLogOpen = true">智能审查记录 <span v-if="reviewCacheRecords.length">{{ reviewCacheRecords.length }}</span></button><span class="state-pill" :class="reviewMode ? 'idle' : session.status">{{ statusLabel }}</span><button v-if="(reviewMode && selectedReviewRecord) || (organizationMode && currentRecord?.source === 'organization')" class="icon-button workspace-close-button" type="button" aria-label="关闭当前报告" title="关闭当前报告" @click="closeWorkspace"><X :size="19" :stroke-width="2.7" /></button></div>
+          <div class="workspace-head-actions"><span class="state-pill" :class="reviewMode ? 'idle' : session.status">{{ statusLabel }}</span><button v-if="(reviewMode && selectedReviewRecord) || (organizationMode && currentRecord?.source === 'organization')" class="icon-button workspace-close-button" type="button" aria-label="关闭当前报告" title="关闭当前报告" @click="closeWorkspace"><X :size="19" :stroke-width="2.7" /></button></div>
         </div>
         <div class="stepper" aria-label="审核步骤">
           <div v-for="(step, index) in steps" :key="step" class="step" :class="{ done: stepIndex > index, active: stepIndex === index }">
@@ -50,7 +54,7 @@
           </div>
           <div v-if="organizationMode && (revisionMode || session.organizationFiles.calculation.length || session.organizationFiles.original.length)" class="organization-file-list"><div v-for="type in ['calculation', 'original']" :key="type"><template v-for="(file, index) in revisionMode ? revisionEntries[type] : session.organizationFiles[type]" :key="`${type}-${index}`"><span>{{ type === 'calculation' ? '计算书' : '原始文件' }} · {{ file.name }}</span><button type="button" :aria-label="`移除 ${file.name}`" @click="revisionMode ? removeRevisionEntry(type, index) : removeOrganizationMaterial(props.kind, type, index)"><X :size="13" /></button></template></div></div>
           <textarea v-if="revisionMode" v-model="revisionNote" class="revision-note" placeholder="本版修改内容（可选）" aria-label="本版修改内容"></textarea><div class="intake-limit"><ShieldCheck :size="14" /> 支持 PDF；鉴定报告每次 1 份，计算书与原始文件可上传多份，单文件不超过 100 MB</div>
-          <div class="intake-footer"><label v-if="!organizationMode" class="review-scope"><span><strong>审查范围</strong><small>可提前选择</small></span><select v-model="selectedScope" aria-label="审查范围"><option value="" disabled>请选择审查范围</option><option v-for="scope in reviewScopes" :key="scope.value" :value="scope.value">{{ scope.label }}</option></select></label><span v-else class="org-upload-note">三类材料齐全后可提交省站审核</span><button class="button button-primary" type="button" :disabled="organizationMode ? !allMaterialsUploaded || submitting : session.status !== 'ready'" @click="beginAudit"><Play :size="16" fill="currentColor" /> {{ revisionMode ? '重新提交省站' : organizationMode ? '提交待审报告' : '开始智能审核' }}</button></div>
+          <div class="intake-footer"><label v-if="!organizationMode" class="review-scope"><span><strong>审查范围</strong><small>可提前选择</small></span><select v-model="selectedScope" aria-label="审查范围"><option value="" disabled>请选择审查范围</option><option v-for="scope in reviewScopes" :key="scope.value" :value="scope.value">{{ scope.label }}</option></select></label><span v-else class="org-upload-note">三类材料齐全后可提交监管审核</span><button class="button button-primary" type="button" :disabled="organizationMode ? !allMaterialsUploaded || submitting : session.status !== 'ready'" @click="beginAudit"><Play :size="16" fill="currentColor" /> {{ revisionMode ? '重新提交审核' : organizationMode ? '提交待审报告' : '开始智能审核' }}</button></div>
         </div>
 
         <div v-else class="work-body">
@@ -81,10 +85,11 @@
     </div>
 
     <section class="history-card surface" :class="{ 'review-history-card': reviewMode }">
-      <div class="card-heading history-heading"><div><span class="section-kicker">03 / 历史记录</span><h2>近期审核记录</h2></div><div class="history-head-actions"><span class="history-count">共 {{ historyRecords.length }} 份报告</span><router-link class="standard-more" to="/records">查看台账 <ArrowRight :size="14" /></router-link></div></div>
-      <div class="history-filter-row"><label class="search-box"><Search :size="16" /><input v-model="historyKeyword" type="search" placeholder="搜索报告、机构、文件、问题及时间" /></label><select v-model="historyStateFilter" aria-label="筛选记录状态"><option value="all">全部状态</option><option value="待下发">待下发</option><option value="已下发">已下发</option><option value="已完成">已完成</option></select><label class="history-date">从 <input v-model="historyStartDate" type="date" aria-label="开始日期" /></label><label class="history-date">至 <input v-model="historyEndDate" type="date" aria-label="结束日期" /></label></div>
-      <div class="history-table-wrap"><table class="history-table"><thead><tr><th>报告文件</th><th>提交时间</th><th>问题</th><th>状态</th><th>操作</th></tr></thead><tbody><tr v-for="record in historyRecords" :key="record.id"><td><div class="table-file"><span class="table-file-icon"><FileText :size="18" /></span><div><strong :title="record.name">{{ record.name }}</strong><small>{{ record.organization || '未标记机构' }}</small></div></div></td><td>{{ record.time }}</td><td><span v-if="isReviewed(record)"><span class="count-dot"></span>{{ detailIssues(record).length }} 项</span><span v-else>—</span></td><td><span class="table-status" :class="reportStatusClass(record)"><span></span>{{ historyStatus(record) }}</span></td><td><div class="history-actions"><button class="text-action" @click="openDetail(record)">查看详情 <ArrowUpRight :size="14" /></button><button v-if="reviewMode && record.status === 'reviewed'" class="text-action" @click="reReview(record)">重新审核</button><button v-if="reviewMode && record.status === 'reviewed'" class="text-action" @click="openHistoryReviewUpload(record)">上传审核报告</button><button v-if="organizationMode && record.status === 'issued'" class="text-action" @click="reuploadRecord(record)">重新上传</button></div></td></tr></tbody></table></div>
+      <div class="card-heading history-heading"><div><span class="section-kicker">{{ reviewMode ? '02 / 报告审核' : '03 / 历史记录' }}</span><h2>{{ reviewMode ? '审核记录' : '近期审核记录' }}</h2></div><div class="history-head-actions"><span class="history-count">共 {{ historyRecords.length }} 份报告</span><router-link class="standard-more" to="/records">查看台账 <ArrowRight :size="14" /></router-link></div></div>
+      <div class="history-filter-row"><label class="search-box"><Search :size="16" /><input v-model="historyKeyword" type="search" :placeholder="reviewMode ? '搜索报告、机构、编号、附件和审核问题' : '搜索报告、机构、文件、问题及时间'" /></label><select v-model="historyStateFilter" aria-label="筛选记录状态"><option value="all">全部状态</option><option v-if="reviewMode" value="待审核">待审核</option><option v-if="reviewMode" value="审核中">审核中</option><option value="待下发">待下发</option><option value="已下发">已下发</option><option value="已完成">已完成</option></select><select v-if="reviewMode" v-model="provinceScope" aria-label="选择审核范围"><option v-for="scope in reviewScopes" :key="scope.value" :value="scope.value">{{ scope.label }}</option></select><label class="history-date">从 <input v-model="historyStartDate" type="date" aria-label="开始日期" /></label><label class="history-date">至 <input v-model="historyEndDate" type="date" aria-label="结束日期" /></label><button v-if="reviewMode" class="button button-primary batch-review-button" type="button" :disabled="!selectedPendingIds.length" @click="beginReview"><Play :size="14" fill="currentColor" /><span>批量开始审核</span><span class="batch-review-count">{{ selectedPendingIds.length }}</span></button></div>
+      <div class="history-table-wrap"><table class="history-table"><thead><tr><th v-if="reviewMode" class="audit-checkbox-cell"><input type="checkbox" aria-label="全选当前筛选结果中的待审核报告" :checked="allVisiblePendingSelected" :disabled="!visiblePendingRecords.length" @change="toggleAllVisiblePending($event.target.checked)" /></th><th>报告文件</th><th>提交时间</th><th>{{ reviewMode ? '审核进度 / 问题' : '问题' }}</th><th>状态</th><th>操作</th></tr></thead><tbody><tr v-for="record in historyRecords" :key="record.id" :class="{ 'audit-row-active': reviewMode && selectedReviewRecord?.id === record.id, 'audit-row-clickable': reviewMode }" @click="reviewMode && focusAuditRecord(record)"><td v-if="reviewMode" class="audit-checkbox-cell" @click.stop><input type="checkbox" :aria-label="`选择 ${record.name}`" :checked="selectedPendingIds.includes(record.id)" :disabled="record.status !== 'pending'" @change="toggleAuditSelection(record)" /></td><td><div class="table-file"><span class="table-file-icon"><FileText :size="18" /></span><div><strong :title="record.name">{{ record.name }}</strong><small>{{ record.organization || '未标记机构' }}</small></div></div></td><td>{{ record.time }}</td><td><div v-if="reviewMode && record.status === 'reviewing'" class="table-audit-progress"><div class="table-audit-track"><i :style="{ width: `${record.reviewProgress || 0}%` }"></i></div><strong>{{ record.reviewProgress || 0 }}%</strong></div><span v-else-if="isReviewed(record)"><span class="count-dot"></span>{{ detailIssues(record).length }} 项</span><span v-else>—</span></td><td><span class="table-status" :class="reportStatusClass(record)"><span></span>{{ historyStatus(record) }}</span></td><td><div class="history-actions" @click.stop><button class="text-action" @click="openDetail(record)">查看详情 <ArrowUpRight :size="14" /></button><button v-if="reviewMode && record.status === 'pending'" class="button button-primary audit-start-action" @click="startSingleReview(record)"><Play :size="13" fill="currentColor" />开始审核</button><button v-if="reviewMode && record.status === 'reviewing'" class="text-action" @click="focusAuditRecord(record)">查看进度</button><button v-if="reviewMode && record.status === 'reviewed'" class="text-action" @click="reReview(record)">重新审核</button><button v-if="reviewMode && record.status === 'reviewed'" class="text-action audit-dispatch-action" @click="openHistoryReviewUpload(record)">确认并下发</button><button v-if="organizationMode && record.status === 'issued'" class="text-action" @click="reuploadRecord(record)">重新上传</button></div></td></tr></tbody></table><div v-if="!historyRecords.length" class="empty-state">暂无符合条件的审核记录</div></div>
     </section>
+    <input v-if="reviewMode" ref="reviewReportInput" class="visually-hidden" type="file" accept=".doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" @change="chooseReviewReport" />
 
     <input ref="fileInput" class="visually-hidden" type="file" :accept="selectedAccept" :multiple="organizationMode && selectedMaterialType !== 'report'" @change="handleFileChange" />
     <div v-if="notice" class="toast" role="status"><CircleAlert :size="16" />{{ notice }}</div>
@@ -92,25 +97,19 @@
     <div v-if="submissionPreview" class="modal-backdrop" @click.self="closeSubmissionPreview"><section ref="submissionPanel" class="management-modal review-file-modal" role="dialog" aria-modal="true" aria-label="查看提交材料"><div class="management-modal-head"><div><span class="section-kicker">机构提交材料</span><h2>{{ submissionPreview.name }}</h2></div><div class="pdf-head-actions"><button v-if="submissionPreview.type === 'pdf'" class="button button-secondary" type="button" @click="togglePdfFullscreen(submissionPanel)"><Maximize2 :size="15" /> 全屏查看</button><button class="icon-button" type="button" aria-label="关闭" @click="closeSubmissionPreview"><X :size="18" /></button></div></div><div class="review-file-body"><div v-if="submissionPreview.reference" class="demo-reference-note">同类型参考 PDF：{{ submissionPreview.referenceName }}。参考文件与当前报告名称及机构不一一对应。</div><iframe v-if="submissionPreview.type === 'pdf'" :src="submissionPreview.url" title="鉴定资料 PDF 预览"></iframe><video v-else-if="submissionPreview.type === 'video'" :src="submissionPreview.url" controls></video><div v-else-if="submissionPreview.type === 'demo'" class="demo-material-preview"><FileText :size="38" /><strong>{{ submissionPreview.name }}</strong><span>当前材料未配备可预览的 PDF。</span></div><p v-else>此格式请下载后查看。</p><div class="review-file-actions"><a v-if="submissionPreview.url" class="button button-secondary" :href="submissionPreview.url" :download="submissionPreview.referenceName || submissionPreview.name"><Download :size="15" /> 下载文件</a><button class="button button-primary" type="button" @click="closeSubmissionPreview">关闭</button></div></div></section></div>
 
     <div v-if="wordPreview" class="modal-backdrop word-preview-backdrop" @click.self="closeReviewWord"><section class="management-modal word-preview-modal" role="dialog" aria-modal="true" aria-label="审核报告 Word 附件"><div class="management-modal-head"><div><span class="section-kicker">已上传审核报告 / Word 附件</span><h2>{{ wordPreview.name }}</h2></div><button class="icon-button" type="button" aria-label="关闭" @click="closeReviewWord"><X :size="18" /></button></div><div class="word-preview-body"><p class="word-preview-meta">{{ wordPreview.size }} · 上传时间 {{ wordPreview.time }}</p><div v-if="wordPreview.loading" class="word-preview-empty">正在读取文档内容…</div><div v-else-if="wordPreview.paragraphs.length" class="word-preview-content"><p v-for="(paragraph, index) in wordPreview.paragraphs" :key="index">{{ paragraph }}</p></div><div v-else class="word-preview-empty"><FileText :size="34" /><strong>当前格式无法在浏览器内完整显示</strong><span>可以打开原文件，或下载后使用 Word 查看完整排版与内容。</span></div></div><div class="word-preview-footer"><a class="button button-secondary" :href="wordPreview.url" target="_blank" rel="noopener">打开原文件</a><a class="button button-primary" :href="wordPreview.url" :download="wordPreview.name"><Download :size="15" /> 下载附件</a></div></section></div>
-    <div v-if="reviewLogOpen" class="modal-backdrop" @click.self="reviewLogOpen = false">
-      <section class="management-modal review-log-modal" role="dialog" aria-modal="true" aria-label="智能审查记录">
-        <div class="management-modal-head"><div><span class="section-kicker">审查任务 / 当前页面</span><h2>智能审查记录</h2></div><button class="icon-button" type="button" aria-label="关闭" @click="reviewLogOpen = false"><X :size="18" /></button></div>
-        <div class="review-log-body">
-          <p class="review-log-intro">审查任务在后台继续运行。已完成的记录可打开工作区查看结果，并使用上一份、下一份切换。</p>
-          <div v-if="!reviewCacheRecords.length" class="review-log-empty"><ScanSearch :size="27" /><strong>暂无智能审查记录</strong><span>选择待审报告并开始审查后，进度会显示在这里。</span></div>
-          <button v-for="record in reviewCacheRecords" :key="record.id" class="review-log-item" type="button" :disabled="record.status === 'reviewing'" @click="openCachedReviewRecord(record)"><span class="review-log-icon"><ScanSearch v-if="record.status === 'reviewing'" :size="19" /><FileText v-else :size="19" /></span><span class="review-log-copy"><strong :title="record.name">{{ record.name }}</strong><small>{{ record.organization }} · {{ scopeName(record.reviewScope) }} · {{ record.reviewedAt || record.time }}</small></span><span class="review-log-status" :class="record.status">{{ record.status === 'reviewing' ? '核查中' : record.status === 'reviewed' ? '核查完毕' : recordStatus(record) }}</span><ChevronRight v-if="record.status !== 'reviewing'" :size="16" /></button>
-        </div>
-      </section>
-    </div>
     <div v-if="detailRecord" class="modal-backdrop" @click.self="closeDetail">
-      <section class="management-modal audit-detail-modal" role="dialog" aria-modal="true" aria-label="审核记录详情">
-        <div class="management-modal-head"><div><span class="section-kicker">{{ detailMode === 'upload' ? '上传审核报告' : '审核记录详情' }} / {{ config.title }}</span><h2>{{ detailRecord.name }}</h2></div><button class="icon-button" type="button" aria-label="关闭" @click="closeDetail"><X :size="18" /></button></div>
+      <section class="management-modal audit-detail-modal" role="dialog" aria-modal="true" :aria-label="detailMode === 'dispatch' ? '确认并下发审核报告' : '审核记录详情'">
+        <div class="management-modal-head"><div><span class="section-kicker">{{ detailMode === 'dispatch' ? '确认并下发' : '审核记录详情' }} / {{ config.title }}</span><h2>{{ detailRecord.name }}</h2></div><button class="icon-button" type="button" aria-label="关闭" @click="closeDetail"><X :size="18" /></button></div>
         <div class="management-detail audit-detail-body">
-          <dl><div><dt>报告编号</dt><dd>{{ detailRecord.id }}</dd></div><div><dt>鉴定类型</dt><dd>{{ config.title }}</dd></div><div><dt>检测机构</dt><dd>{{ detailRecord.organization || '未标记机构' }}</dd></div><div><dt>当前版本</dt><dd>第 {{ detailRecord.versions?.at(-1)?.number || 1 }} 版</dd></div><div><dt>提交时间</dt><dd>{{ detailRecord.time }}</dd></div><div><dt>审核状态</dt><dd>{{ historyStatus(detailRecord) }}</dd></div><div><dt>核查范围</dt><dd>{{ scopeName(detailRecord.reviewScope) }}</dd></div><div><dt>审核完成时间</dt><dd>{{ detailRecord.reviewedAt || '未记录' }}</dd></div><div><dt>下发时间</dt><dd>{{ detailRecord.issuedAt || '未记录' }}</dd></div><div><dt>上传资料</dt><dd>{{ recordAttachmentNames(detailRecord, 'report').length + recordAttachmentNames(detailRecord, 'calculation').length + recordAttachmentNames(detailRecord, 'original').length }} 份</dd></div><div v-if="!organizationMode || detailRecord.status !== 'reviewed'"><dt>审核问题</dt><dd>{{ detailIssues(detailRecord).length }} 项</dd></div><div v-if="!organizationMode || detailRecord.status !== 'reviewed'"><dt>审核报告</dt><dd>{{ detailMode === 'upload' ? detailRecord.reviewReportName || '待上传 Word 附件' : reviewReportLabel(detailRecord) }}</dd></div></dl>
+          <dl><div><dt>报告编号</dt><dd>{{ detailRecord.id }}</dd></div><div><dt>鉴定类型</dt><dd>{{ config.title }}</dd></div><div><dt>检测机构</dt><dd>{{ detailRecord.organization || '未标记机构' }}</dd></div><div><dt>当前版本</dt><dd>第 {{ detailRecord.versions?.at(-1)?.number || 1 }} 版</dd></div><div><dt>提交时间</dt><dd>{{ detailRecord.time }}</dd></div><div><dt>审核状态</dt><dd>{{ historyStatus(detailRecord) }}</dd></div><div><dt>核查范围</dt><dd>{{ scopeName(detailRecord.reviewScope) }}</dd></div><div><dt>审核完成时间</dt><dd>{{ detailRecord.reviewedAt || '未记录' }}</dd></div><div><dt>下发时间</dt><dd>{{ detailRecord.issuedAt || '未记录' }}</dd></div><div><dt>上传资料</dt><dd>{{ recordAttachmentNames(detailRecord, 'report').length + recordAttachmentNames(detailRecord, 'calculation').length + recordAttachmentNames(detailRecord, 'original').length }} 份</dd></div><div v-if="showReviewDetailSection && (!organizationMode || detailRecord.status !== 'reviewed')"><dt>审核问题</dt><dd>{{ detailIssues(detailRecord).length }} 项</dd></div><div v-if="showReviewDetailSection && (!organizationMode || detailRecord.status !== 'reviewed')"><dt>审核报告</dt><dd>{{ reviewReportLabel(detailRecord) }}</dd></div></dl>
           <h3>上传资料</h3>
-          <div class="audit-detail-files"><div v-for="material in auditMaterials" :key="material.key" class="audit-detail-file-row"><strong>{{ material.label }}</strong><div><button v-for="(name, index) in recordAttachmentNames(detailRecord, material.key)" :key="`${name}-${index}`" type="button" @click="openSubmissionFile(material.key, undefined, detailRecord, index)"><FileText :size="15" /><span>{{ name }}</span><Eye :size="15" /></button><span v-if="!recordAttachmentNames(detailRecord, material.key).length">暂无文件</span></div></div><div v-if="detailMode === 'upload' || ((!organizationMode || detailRecord.status !== 'reviewed') && reviewReportLabel(detailRecord) !== '未生成')" class="audit-detail-file-row"><strong>审核报告</strong><div><button v-if="detailRecord.reviewReportName" type="button" @click="openReviewWord(detailRecord)"><FileText :size="15" /><span>{{ detailRecord.reviewReportName }}</span><Eye :size="15" /></button><button v-else-if="detailMode !== 'upload'" type="button" @click="downloadUploadedReviewReport(detailRecord)"><FileText :size="15" /><span>{{ reviewReportLabel(detailRecord) }}</span><Download :size="15" /></button><button v-if="detailMode === 'upload'" class="audit-upload-word" type="button" :disabled="uploadingReviewReport" @click="reviewReportInput?.click()"><FileText :size="15" />{{ detailRecord.reviewReportName ? '更换审核报告' : '上传审核报告' }}</button></div></div></div>
-          <h3 v-if="!organizationMode || detailRecord.status !== 'reviewed'">问题记录 <small>{{ detailIssues(detailRecord).length }} 项</small></h3><p v-if="(!organizationMode || detailRecord.status !== 'reviewed') && !detailIssues(detailRecord).length">暂无审核问题</p><div v-for="issue in visibleDetailIssues(detailRecord)" :key="issue.id" class="record-detail-issue"><strong>{{ issue.title }}</strong><span>第 {{ issue.page }} 页 · {{ issue.level === 'high' ? '重点关注' : '建议复核' }}</span><p v-if="issue.description">{{ issue.description }}</p><p v-if="issue.suggestion">处理建议：{{ issue.suggestion }}</p></div><div v-if="(!organizationMode || detailRecord.status !== 'reviewed') && detailRecord.reviewNote" class="record-detail-note"><strong>审核备注</strong><p>{{ detailRecord.reviewNote }}</p></div>
-          <div class="management-modal-foot"><button class="button button-primary" type="button" :disabled="detailMode === 'upload' && (!detailRecord.reviewReportName || uploadingReviewReport || detailRecord.status !== 'reviewed')" @click="detailMode === 'upload' ? confirmUploadAndIssue() : closeDetail()">{{ detailMode === 'upload' ? '确认并下发' : '关闭' }}</button></div>
+          <div class="audit-detail-files">
+            <div v-for="material in auditMaterials" :key="material.key" class="audit-detail-file-row"><strong>{{ material.label }}</strong><div><button v-for="(name, index) in recordAttachmentNames(detailRecord, material.key)" :key="`${name}-${index}`" type="button" @click="openSubmissionFile(material.key, undefined, detailRecord, index)"><FileText :size="15" /><span>{{ name }}</span><Eye :size="15" /></button><span v-if="!recordAttachmentNames(detailRecord, material.key).length">暂无文件</span></div></div>
+            <div v-if="detailMode === 'dispatch'" class="dispatch-outcome-row"><label for="dispatch-outcome">下发结论</label><div class="dispatch-outcome-control"><select id="dispatch-outcome" v-model="dispatchOutcome"><option value="revise">需机构修改 · 已下发</option><option value="approved">审核无误 · 已完成</option></select><span>确认后同步更新机构端记录状态。</span></div></div>
+            <div v-if="showReviewDetailSection && (detailMode === 'dispatch' || ((!organizationMode || detailRecord.status !== 'reviewed') && reviewReportLabel(detailRecord) !== '未生成'))" class="audit-detail-file-row"><strong>审核报告</strong><div><button v-if="detailRecord.reviewReportName" type="button" @click="openReviewWord(detailRecord)"><FileText :size="15" /><span>{{ detailRecord.reviewReportName }}</span><Eye :size="15" /></button><button v-else type="button" @click="downloadUploadedReviewReport(detailRecord)"><FileText :size="15" /><span>{{ reviewReportLabel(detailRecord) }}</span><Download :size="15" /></button><button v-if="detailMode === 'dispatch'" class="audit-preview-report" type="button" @click="previewDispatchReview"><Eye :size="15" />预览审核报告</button><button v-if="detailMode === 'dispatch'" class="audit-upload-word" type="button" :disabled="uploadingReviewReport" @click="reviewReportInput?.click()"><FileText :size="15" />更换审核报告</button></div></div>
+          </div>
+          <template v-if="showReviewDetailSection && (!organizationMode || detailRecord.status !== 'reviewed')"><h3>问题记录 <small>{{ detailIssues(detailRecord).length }} 项</small></h3><p v-if="!detailIssues(detailRecord).length">暂无审核问题</p><div v-for="issue in visibleDetailIssues(detailRecord)" :key="issue.id" class="record-detail-issue"><strong>{{ issue.title }}</strong><span>第 {{ issue.page }} 页 · {{ issue.level === 'high' ? '重点关注' : '建议复核' }}</span><p v-if="issue.description">{{ issue.description }}</p><p v-if="issue.suggestion">处理建议：{{ issue.suggestion }}</p></div><div v-if="detailRecord.reviewNote" class="record-detail-note"><strong>审核备注</strong><p>{{ detailRecord.reviewNote }}</p></div></template>
+          <div class="management-modal-foot"><button class="button button-primary" type="button" :disabled="detailMode === 'dispatch' && (uploadingReviewReport || detailRecord.status !== 'reviewed')" @click="detailMode === 'dispatch' ? confirmUploadAndIssue() : closeDetail()">{{ detailMode === 'dispatch' ? '确认并下发' : '关闭' }}</button></div>
         </div>
       </section>
     </div>
@@ -161,21 +160,23 @@ const historyStateFilter = ref('all')
 const historyStartDate = ref('')
 const historyEndDate = ref('')
 const queueKeyword = ref('')
+const initialProvinceOrder = Object.fromEntries(Object.entries(auditStore.records).map(([kind, list]) => [kind, Object.fromEntries([...list].sort((a, b) => provinceStatusRank(a) - provinceStatusRank(b) || String(b.time).localeCompare(String(a.time))).map((record, index) => [record.id, index]))]))
 const historyRecords = computed(() => {
   const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000
   return records.value.filter(record => {
-    if (record.status === 'withdrawn' || props.reviewMode && record.status === 'pending' || props.organizationMode && !['reviewed', 'issued', 'completed'].includes(record.status)) return false
-    if (record.status !== 'reviewed' && Date.parse(String(record.time || '').replace(' ', 'T')) < cutoff) return false
+    if (record.status === 'withdrawn' || props.organizationMode && !['reviewed', 'issued', 'completed'].includes(record.status)) return false
+    if (!props.reviewMode && record.status !== 'reviewed' && Date.parse(String(record.time || '').replace(' ', 'T')) < cutoff) return false
     if (historyStateFilter.value !== 'all' && historyStatus(record) !== historyStateFilter.value) return false
     if (historyStartDate.value && String(record.time).slice(0, 10) < historyStartDate.value) return false
     if (historyEndDate.value && String(record.time).slice(0, 10) > historyEndDate.value) return false
     return !historyKeyword.value || reportSearchText(record).includes(historyKeyword.value.trim().toLocaleLowerCase())
-  }).sort((a, b) => reportStatusRank(a) - reportStatusRank(b) || String(b.time).localeCompare(String(a.time)))
+  }).sort((a, b) => props.reviewMode
+    ? (initialProvinceOrder[props.kind]?.[a.id] ?? Number.MAX_SAFE_INTEGER) - (initialProvinceOrder[props.kind]?.[b.id] ?? Number.MAX_SAFE_INTEGER) || String(b.time).localeCompare(String(a.time))
+    : reportStatusRank(a) - reportStatusRank(b) || String(b.time).localeCompare(String(a.time)))
 })
 const selectedReviewRecord = ref(null)
 const selectedPendingIds = ref([])
 const handledBatchIds = ref([])
-const reviewLogOpen = ref(false)
 const detailMode = ref('view')
 const uploadingReviewReport = ref(false)
 const submissionPreview = ref(null)
@@ -188,6 +189,8 @@ const reviewQueue = computed(() => records.value.filter(record => record.source 
 const pendingRecords = computed(() => reviewQueue.value.filter(record => record.status === 'pending'))
 const organizationUnreviewedRecords = computed(() => props.organizationMode ? records.value.filter(record => record.source === 'organization' && ['pending', 'reviewing'].includes(record.status)) : [])
 const filteredPendingRecords = computed(() => pendingRecords.value.filter(record => !queueKeyword.value || reportSearchText(record).includes(queueKeyword.value.trim().toLocaleLowerCase())))
+const visiblePendingRecords = computed(() => historyRecords.value.filter(record => record.status === 'pending'))
+const allVisiblePendingSelected = computed(() => visiblePendingRecords.value.length > 0 && visiblePendingRecords.value.every(record => selectedPendingIds.value.includes(record.id)))
 const filteredOrganizationPending = computed(() => organizationUnreviewedRecords.value.filter(record => !queueKeyword.value || reportSearchText(record).includes(queueKeyword.value.trim().toLocaleLowerCase())))
 const reviewCacheRecords = computed(() => (auditStore.reviewCacheIds[props.kind] || []).map(id => records.value.find(record => record.id === id)).filter(record => record && ['reviewing', 'reviewed', 'issued', 'completed'].includes(record.status)))
 const completedCacheIds = computed(() => reviewCacheRecords.value.filter(record => ['reviewed', 'issued', 'completed'].includes(record.status)).map(record => record.id))
@@ -197,12 +200,13 @@ const workspaceRecords = computed(() => {
   return selectedPendingIds.value.map(id => pendingById.get(id)).filter(Boolean)
 })
 const canBeginReview = computed(() => !!provinceScope.value && pendingRecords.value.some(record => selectedPendingIds.value.includes(record.id)))
-const provinceScope = ref('')
+const provinceScope = ref('all')
 const submitting = ref(false)
 const revisionEntries = ref({ report: [], calculation: [], original: [] })
 const revisionNote = ref('')
 const revisionMode = ref(false)
 const dispatchOutcome = ref('revise')
+const showReviewDetailSection = computed(() => detailMode.value !== 'dispatch' || dispatchOutcome.value === 'revise')
 const dispatchMenuOpen = ref(false)
 const dispatchMenu = ref(null)
 const previewedVersion = ref(null)
@@ -233,13 +237,23 @@ const reviewScopes = [
   { value: 'structure', label: '结构承载能力验算与分析智能核查' },
   { value: 'procedure', label: '程序及结论智能核查' }
 ]
+const provinceNodes = [
+  { label: '待审核', note: '机构已提交，等待选择核查范围', status: 'pending' },
+  { label: '审核中', note: '智能核查正在生成审核结果', status: 'reviewing' },
+  { label: '待下发', note: '核查完成，确认审核意见', status: 'reviewed' },
+  { label: '已下发', note: '需机构修改并重新提交', status: 'issued' },
+  { label: '已完成', note: '审核无误，流程结束', status: 'completed' }
+]
+function provinceStatusRank(record) { return ({ pending: 0, reviewing: 1, reviewed: 2, issued: 3, completed: 4 })[record.status] ?? 4 }
+function provinceNodeIndex(record) { return provinceStatusRank(record) }
+function provinceStatusCount(status) { return records.value.filter(record => record.source === 'organization' && record.status === status).length }
 const materialFiles = type => revisionMode.value ? revisionEntries.value[type] : type === 'report' ? session.value.file ? [session.value.file] : [] : props.organizationMode ? session.value.organizationFiles[type] : session.value.supportFiles[type] ? [session.value.supportFiles[type]] : []
 const materialCount = type => materialFiles(type).length
 const materialNames = type => materialFiles(type).map(file => file.name)
 const uploadedCount = computed(() => materials.value.filter(material => materialCount(material.key)).length)
 const allMaterialsUploaded = computed(() => uploadedCount.value === materials.value.length)
 const selectedScope = computed({ get: () => session.value.reviewScope, set: value => chooseReviewScope(props.kind, value) })
-const steps = computed(() => props.reviewMode ? ['选择报告', '选择范围', '生成审核', '确认下发'] : props.organizationMode ? ['上传资料', '提交省站', '等待审核', '查看结果'] : ['上传资料', '选择范围', '智能审核', '预览与导出'])
+const steps = computed(() => props.reviewMode ? ['选择报告', '选择范围', '生成审核', '确认下发'] : props.organizationMode ? ['上传资料', '提交审核', '等待审核', '查看结果'] : ['上传资料', '选择范围', '智能审核', '预览与导出'])
 const auditStages = ['解析文档', '提取信息', '规则核验', '生成结果']
 const chartColors = ['#235FD6', '#78A2EA', '#B5CDF3', '#DBE7FA']
 const statusLabel = computed(() => props.reviewMode ? `${pendingRecords.value.length} 份待审核` : props.organizationMode && currentRecord.value?.source === 'organization' ? recordStatus(currentRecord.value) : ({ idle: allMaterialsUploaded.value ? '等待提交' : '等待上传', ready: '等待审核', submitted: '已提交', auditing: '正在审核', completed: '审核完成' })[session.value.status])
@@ -276,13 +290,13 @@ const metrics = computed(() => {
   if (props.reviewMode) return [
     { label: '已收报告', value: records.value.length, unit: '份', note: '当前可见报告', icon: FileText, tone: 'indigo' },
     { label: '待审核报告', value: pendingRecords.value.length, unit: '份', note: '检测机构已提交', icon: BookOpen, tone: 'teal' },
-    { label: '已审核报告', value: reviewed, unit: '份', note: '省站审核结果', icon: ShieldCheck, tone: 'cyan' },
+    { label: '已审核报告', value: reviewed, unit: '份', note: '监管审核结果', icon: ShieldCheck, tone: 'cyan' },
     { label: '可用标准', value: available.value.length, unit: '项', note: '当前鉴定类型可引用', icon: ScanSearch, tone: 'amber' }
   ]
   if (props.organizationMode) return [
     { label: '已提交报告', value: records.value.filter(record => record.source === 'organization').length, unit: '份', note: '本机构提交记录', icon: FileText, tone: 'indigo' },
-    { label: '待审核报告', value: pendingRecords.value.length, unit: '份', note: '等待省站审核', icon: BookOpen, tone: 'teal' },
-    { label: '已审核报告', value: reviewed, unit: '份', note: '省站已下发结果', icon: ShieldCheck, tone: 'cyan' },
+    { label: '待审核报告', value: pendingRecords.value.length, unit: '份', note: '等待监管审核', icon: BookOpen, tone: 'teal' },
+    { label: '已审核报告', value: reviewed, unit: '份', note: '监管审核结果已下发', icon: ShieldCheck, tone: 'cyan' },
     { label: '可用标准', value: available.value.length, unit: '项', note: '当前鉴定类型可引用', icon: ScanSearch, tone: 'amber' }
   ]
   return [
@@ -301,7 +315,7 @@ function closeWorkspace() {
     selectedReviewRecord.value = null
     selectedPendingIds.value = []
     handledBatchIds.value = []
-    provinceScope.value = ''
+    provinceScope.value = 'all'
     openedFromHistory.value = false
     previewedVersion.value = null
   } else resetIntake(props.kind)
@@ -314,12 +328,36 @@ function withdrawHistory(record) {
   flash('已撤回提交。')
 }
 function reReview(record) {
+  const scope = record.reviewScope || 'all'
   if (!reopenOrganizationAudit(props.kind, record)) return
-  closeWorkspace()
-  selectedPendingIds.value = [record.id]
+  if (!reviewOrganizationAudit(props.kind, record, scope)) return flash('重新审核启动失败，请重试。')
+  auditStore.reviewCacheIds[props.kind] = [...new Set([...(auditStore.reviewCacheIds[props.kind] || []), record.id])]
+  selectedPendingIds.value = selectedPendingIds.value.filter(id => id !== record.id)
+  focusAuditRecord(record)
+  flash('已重新开始审核。')
+}
+function focusAuditRecord(record) {
   selectedReviewRecord.value = record
-  flash('已同步到报告工作区，请选择审查范围后重新审核。')
-  document.querySelector('.review-workspace')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  if (record.reviewScope) provinceScope.value = record.reviewScope
+}
+function toggleAuditSelection(record) {
+  if (record.status !== 'pending') return
+  const ids = selectedPendingIds.value
+  selectedPendingIds.value = ids.includes(record.id) ? ids.filter(id => id !== record.id) : [...ids, record.id]
+  focusAuditRecord(record)
+}
+function toggleAllVisiblePending(checked) {
+  const visibleIds = visiblePendingRecords.value.map(record => record.id)
+  selectedPendingIds.value = checked ? [...new Set([...selectedPendingIds.value, ...visibleIds])] : selectedPendingIds.value.filter(id => !visibleIds.includes(id))
+  if (checked && visiblePendingRecords.value.length) focusAuditRecord(visiblePendingRecords.value[0])
+}
+function startSingleReview(record) {
+  if (record.status !== 'pending' || !provinceScope.value) return
+  if (!reviewOrganizationAudit(props.kind, record, provinceScope.value)) return
+  auditStore.reviewCacheIds[props.kind] = [...new Set([...(auditStore.reviewCacheIds[props.kind] || []), record.id])]
+  selectedPendingIds.value = selectedPendingIds.value.filter(id => id !== record.id)
+  focusAuditRecord(record)
+  flash('已开始智能审核。')
 }
 function openPicker(type = 'report') { selectedMaterialType.value = type; if (fileInput.value) { fileInput.value.multiple = props.organizationMode && type !== 'report'; fileInput.value.click() } }
 function acceptFiles(files, type) {
@@ -344,7 +382,7 @@ async function beginAudit() {
     if (submitting.value) return
     submitting.value = true
     try {
-      if (await submitOrganizationAudit(props.kind, provincialState.user?.org)) flash('报告已提交省站，等待审核。')
+      if (await submitOrganizationAudit(props.kind, provincialState.user?.org)) flash('报告已提交监管审核，等待审核。')
     } catch { flash('文件保存失败，请检查浏览器存储空间后重试。') }
     finally { submitting.value = false }
     return
@@ -360,12 +398,12 @@ function selectReviewRecord(record) {
     selectedPendingIds.value = ids.includes(record.id) ? ids.filter(id => id !== record.id) : [...ids, record.id]
     const lastId = selectedPendingIds.value.at(-1)
     selectedReviewRecord.value = lastId ? pendingRecords.value.find(item => item.id === lastId) || null : null
-    if (!lastId) provinceScope.value = ''
+    if (!lastId) provinceScope.value = 'all'
   } else {
     handledBatchIds.value = []
     selectedPendingIds.value = []
     selectedReviewRecord.value = record
-    provinceScope.value = record.reviewScope || ''
+    provinceScope.value = record.reviewScope || 'all'
   }
   previewedVersion.value = null
   showPreview.value = false
@@ -383,7 +421,7 @@ function removeSelectedPending(record) {
     const nextId = selectedPendingIds.value.at(-1)
     selectedReviewRecord.value = nextId ? pendingRecords.value.find(item => item.id === nextId) || null : null
   }
-  if (!selectedPendingIds.value.length) provinceScope.value = ''
+  if (!selectedPendingIds.value.length) provinceScope.value = 'all'
 }
 function beginReview() {
   if (!canBeginReview.value) return
@@ -415,11 +453,17 @@ function advanceReviewResult() {
     selectedReviewRecord.value = null
     handledBatchIds.value = []
     selectedPendingIds.value = []
-    provinceScope.value = ''
+    provinceScope.value = 'all'
   }
   openedFromHistory.value = false
 }
 function previewReview() { previewedVersion.value = selectedReviewRecord.value?.versions?.at(-1)?.number; showPreview.value = true }
+function previewDispatchReview() {
+  if (!detailRecord.value) return
+  focusAuditRecord(detailRecord.value)
+  previewPage.value = detailIssues(detailRecord.value)[0]?.page || 1
+  previewReview()
+}
 async function openReviewWord(record) {
   if (!record?.reviewReportName) return
   try {
@@ -445,7 +489,7 @@ async function chooseReviewReport(event) {
   if (!file) return
   if (!/\.docx?$/i.test(file.name)) return flash('请选择 Word 格式的审核报告。')
   if (file.size > 100 * 1024 * 1024) return flash('文件超过 100 MB。')
-  const target = detailMode.value === 'upload' ? detailRecord.value : selectedReviewRecord.value
+  const target = detailMode.value === 'dispatch' ? detailRecord.value : selectedReviewRecord.value
   if (!target || target.status !== 'reviewed') return flash('请选择待下发的报告。')
   uploadingReviewReport.value = true
   try {
@@ -479,7 +523,7 @@ function issueReview() {
   flash(outcome === 'revise' ? '已下发修改意见，机构可重新上传。' : '审核无误，流程已完成。')
   advanceReviewResult()
 }
-function withdrawCurrent() { if (withdrawOrganizationAudit(props.kind, currentRecord.value)) flash('已撤回，省站将无法审核这一版报告。') }
+function withdrawCurrent() { if (withdrawOrganizationAudit(props.kind, currentRecord.value)) flash('已撤回，监管人员将无法审核这一版报告。') }
 function reuploadRecord(record) {
   selectRecord(props.kind, record)
   revisionEntries.value = Object.fromEntries(['report', 'calculation', 'original'].map(category => [category, recordAttachmentNames(record, category).map((name, existingIndex) => ({ name, existingIndex }))]))
@@ -496,14 +540,14 @@ async function submitRevision() {
     revisionMode.value = false
     revisionEntries.value = { report: [], calculation: [], original: [] }
     revisionNote.value = ''
-    flash('新版本已提交省站，等待审核。')
+    flash('新版本已提交监管审核，等待审核。')
   } catch (error) { flash(error?.message || '新版本保存失败，请重试。') }
   finally { submitting.value = false }
 }
 
 function isReviewed(record) { return !!record && (record.source !== 'organization' || ['reviewed', 'issued', 'completed'].includes(record.status)) }
 function recordStatus(record) { return record?.source !== 'organization' ? '已完成' : ({ pending: '待审核', reviewing: '审核中', reviewed: '待下发', issued: '已下发', completed: '已完成', withdrawn: '已撤回' })[record.status] || '待审核' }
-function historyStatus(record) { return record?.source !== 'organization' || record.status === 'completed' ? '已完成' : record.status === 'issued' ? '已下发' : record.status === 'reviewed' ? '待下发' : '待审核' }
+function historyStatus(record) { return record?.source !== 'organization' || record.status === 'completed' ? '已完成' : record.status === 'issued' ? '已下发' : record.status === 'reviewed' ? '待下发' : record.status === 'reviewing' ? '审核中' : '待审核' }
 function scopeName(value) { return reviewScopes.find(scope => scope.value === value)?.label || value || '未选择' }
 function recordAttachmentNames(record, category) {
   if (!record) return []
@@ -553,27 +597,21 @@ function selectHistory(record) {
   showPreview.value = (!props.reviewMode || record.source === 'sample') && isReviewed(record)
   if (props.reviewMode) document.querySelector('.review-workspace')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
-function openDetail(record) { detailMode.value = 'view'; detailRecord.value = record }
+function openDetail(record) { detailMode.value = 'view'; detailRecord.value = record; if (props.reviewMode) focusAuditRecord(record) }
 function closeDetail() { detailRecord.value = null; detailMode.value = 'view' }
 function openHistoryReviewUpload(record) {
   if (record.status !== 'reviewed') return
-  detailMode.value = 'upload'
+  focusAuditRecord(record)
+  dispatchOutcome.value = 'revise'
+  detailMode.value = 'dispatch'
   detailRecord.value = record
 }
 function confirmUploadAndIssue() {
   const record = detailRecord.value
-  if (!record || record.status !== 'reviewed' || !record.reviewReportName || uploadingReviewReport.value) return
-  if (!issueOrganizationAudit(props.kind, record, 'revise')) return flash('下发失败，请稍后重试。')
+  if (!record || record.status !== 'reviewed' || uploadingReviewReport.value) return
+  if (!issueOrganizationAudit(props.kind, record, dispatchOutcome.value)) return flash('下发失败，请稍后重试。')
   closeDetail()
-  flash('已下发修改意见，机构可重新上传。')
-}
-function openCachedReviewRecord(record) {
-  if (!['reviewed', 'issued', 'completed'].includes(record.status)) return
-  selectedPendingIds.value = []
-  provinceScope.value = record.reviewScope || ''
-  focusReviewRecord(record)
-  reviewLogOpen.value = false
-  nextTick(() => document.querySelector('.review-workspace')?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
+  flash(dispatchOutcome.value === 'revise' ? '已下发修改意见，机构可重新上传。' : '审核无误，流程已完成。')
 }
 function downloadReport() {
   if (!currentRecord.value || !isReviewed(currentRecord.value)) return
@@ -594,7 +632,7 @@ watch(() => [showPreview.value, props.kind, currentRecord.value?.id, currentReco
     else storedReportPreviewUrl.value = url
   } catch { /* report may no longer be stored in this browser */ }
 })
-watch(() => props.kind, () => { dispatchMenuOpen.value = false; revisionMode.value = false; revisionEntries.value = { report: [], calculation: [], original: [] }; selectedReviewRecord.value = null; selectedPendingIds.value = []; handledBatchIds.value = []; provinceScope.value = ''; openedFromHistory.value = false; previewedVersion.value = null; showPreview.value = false; reviewLogOpen.value = false; closeDetail(); closeSubmissionPreview(); closeReviewWord() })
+watch(() => props.kind, () => { dispatchMenuOpen.value = false; revisionMode.value = false; revisionEntries.value = { report: [], calculation: [], original: [] }; selectedReviewRecord.value = null; selectedPendingIds.value = []; handledBatchIds.value = []; provinceScope.value = 'all'; openedFromHistory.value = false; previewedVersion.value = null; showPreview.value = false; closeDetail(); closeSubmissionPreview(); closeReviewWord() })
 watch(() => selectedReviewRecord.value?.id, () => { dispatchMenuOpen.value = false })
 watch(() => auditStore.previewRequest, (request) => {
   if (request?.kind !== props.kind) return
@@ -672,5 +710,16 @@ onBeforeUnmount(() => { document.removeEventListener('pointerdown', closeDispatc
 .workspace-close-button{width:39px;height:39px;border:1px solid #a9c4f4;border-radius:10px;background:#eaf1ff;color:#235fd6;box-shadow:0 2px 8px rgba(35,95,214,.12);cursor:pointer;transition:background .15s,border-color .15s,box-shadow .15s}.workspace-close-button:hover{border-color:#235fd6;background:#dce9ff;color:#174cb6;box-shadow:0 3px 11px rgba(35,95,214,.2)}.workspace-close-button:focus-visible{outline:3px solid #93b7f6;outline-offset:2px}
 .review-log-link{display:inline-flex;align-items:center;gap:7px;padding:7px 10px;border:0;border-radius:8px;background:transparent;color:#235fd6;font-size:12px;font-weight:700;cursor:pointer}.review-log-link:hover{background:#edf4ff}.review-log-link span{display:grid;place-items:center;min-width:20px;height:20px;padding:0 5px;border-radius:10px;background:#eaf1ff;font-size:10px}.review-log-modal{display:flex;flex-direction:column;width:min(760px,96vw);max-height:min(80vh,760px)}.review-log-body{min-height:0;overflow:auto;padding:18px 24px 24px}.review-log-intro{margin:0 0 14px;color:#73839b;font-size:12px;line-height:1.6}.review-log-empty{display:grid;justify-items:center;gap:8px;padding:45px 15px;border:1px dashed #d5e2f7;border-radius:12px;color:#8998ae;text-align:center}.review-log-empty strong{color:#40516b;font-size:13px}.review-log-empty span{font-size:11px}.review-log-item{display:flex;align-items:center;gap:12px;width:100%;margin-top:8px;padding:12px 14px;border:1px solid #e0e9f8;border-radius:11px;background:#fff;text-align:left;color:#235fd6;cursor:pointer}.review-log-item:hover:not(:disabled){border-color:#a8c5f7;background:#f6f9ff}.review-log-item:disabled{cursor:default;background:#f8faff}.review-log-icon{display:grid;place-items:center;flex:none;width:36px;height:36px;border-radius:9px;background:#eaf1ff}.review-log-copy{display:grid;gap:5px;flex:1;min-width:0}.review-log-copy strong,.review-log-copy small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.review-log-copy strong{color:#30425c;font-size:12px}.review-log-copy small{color:#8796aa;font-size:10px}.review-log-status{flex:none;padding:5px 9px;border-radius:20px;background:#eaf1ff;color:#235fd6;font-size:10px;font-weight:700}.review-log-status.reviewing{background:#fff4df;color:#ac741d}.review-log-status.issued{background:#f0eaff;color:#7d5fce}.review-log-status.completed{background:#e5f7f2;color:#179b80}.audit-detail-file-row button.audit-upload-word{border-color:#235fd6;background:#235fd6;color:#fff;font-weight:700}.audit-detail-file-row button.audit-upload-word:hover{background:#1b51bf}.audit-detail-file-row button.audit-upload-word:disabled{opacity:.6;cursor:wait}
 .audit-detail-file-row button.audit-upload-word{min-height:38px;padding:9px 15px;border-color:#235fd6;background:#235fd6;color:#fff;font-size:12px;font-weight:700;box-shadow:0 5px 13px rgba(35,95,214,.22);transition:background .16s,box-shadow .16s,transform .16s}.audit-detail-file-row button.audit-upload-word svg{color:#fff;stroke:#fff}.audit-detail-file-row button.audit-upload-word:hover:not(:disabled){border-color:#174cb6;background:#174cb6;box-shadow:0 7px 17px rgba(35,95,214,.28);transform:translateY(-1px)}.audit-detail-file-row button.audit-upload-word:focus-visible{outline:3px solid #9fc1fb;outline-offset:2px}
+.audit-detail-file-row:has(.audit-upload-word)>div{flex-wrap:nowrap;min-width:0}.audit-detail-file-row:has(.audit-upload-word)>div>button:first-child{flex:1;min-width:0}.audit-detail-file-row:has(.audit-upload-word)>div>.audit-upload-word{flex:none;white-space:nowrap}
+.province-flow-strip{padding:24px;margin-bottom:24px}.province-flow-strip .card-heading{align-items:start;margin-bottom:20px}.flow-selected-name{max-width:700px;margin:7px 0 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#8b98aa;font-size:11px}.province-node-list{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:9px}.province-node{display:flex;align-items:center;gap:10px;min-width:0;min-height:76px;padding:12px 10px;border:1px solid #e2eaf7;border-radius:11px;background:#f9fbff;color:#91a0b5}.province-node.reached{border-color:#b8d0fa;background:#f2f7ff;color:#235fd6}.province-node.current{border-color:#7fa8f2;background:#eaf2ff;box-shadow:inset 3px 0 #235fd6;color:#235fd6}.province-node-number{display:grid;place-items:center;flex:none;width:29px;height:29px;border:1px solid #d7e3f5;border-radius:50%;background:#fff;font-size:10px;font-weight:700}.province-node.reached .province-node-number,.province-node.current .province-node-number{border-color:#235fd6;background:#235fd6;color:#fff}.province-node>div{display:grid;gap:5px;min-width:0}.province-node strong{font-size:12px;color:#30425c}.province-node small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10px;color:#93a1b4}.province-node em{margin-left:auto;align-self:flex-start;flex:none;font-style:normal;font-size:10px;white-space:nowrap}
+.review-history-card .history-filter-row{display:flex;align-items:center;gap:9px}.review-history-card .history-filter-row .search-box{flex:1 1 260px;min-width:220px;width:auto}.review-history-card .history-filter-row select{max-width:190px;min-height:40px}.review-history-card .batch-review-button{min-height:40px;white-space:nowrap;font-size:11px}.review-history-card .batch-review-button:disabled{background:#e5ecf7;color:#8ea1c0;box-shadow:none}.review-history-card .history-table{min-width:1060px}.review-history-card .history-table th:first-child{width:4%}.review-history-card .history-table th:nth-child(2){width:24%}.review-history-card .history-table th:nth-child(3){width:16%}.review-history-card .history-table th:nth-child(4){width:14%}.review-history-card .history-table th:nth-child(5){width:12%}.review-history-card .history-table th:last-child{width:30%}.review-history-card .history-table .audit-checkbox-cell{padding:0 5px;text-align:center}.audit-checkbox-cell input{width:17px;height:17px;accent-color:#235fd6;cursor:pointer}.audit-checkbox-cell input:disabled{cursor:not-allowed;opacity:.4}.audit-row-clickable{cursor:pointer}.audit-row-clickable:hover{background:#f8fbff}.audit-row-active{background:#f2f7ff}.table-audit-progress{display:flex;align-items:center;gap:8px;min-width:105px}.table-audit-track{flex:1;height:7px;overflow:hidden;border-radius:8px;background:#e6eefb}.table-audit-track i{display:block;height:100%;border-radius:8px;background:linear-gradient(90deg,#73a7f2,#235fd6);transition:width .3s}.table-audit-progress strong{flex:none;color:#235fd6;font-size:10px}.review-history-card .history-actions{justify-content:center}.review-history-card .history-actions .audit-start-action{min-width:94px;min-height:34px;padding:6px 10px;font-size:11px}.audit-dispatch-action{font-weight:700;color:#235fd6}.dispatch-outcome-row{display:flex;align-items:center;gap:10px;margin-top:18px;padding:12px;border:1px solid #dce8fb;border-radius:10px;background:#f7faff;color:#40516b;font-size:11px}.dispatch-outcome-row label{font-weight:700}.dispatch-outcome-row select{min-height:36px;padding:0 10px;border:1px solid #cbdcf7;border-radius:8px;background:#fff;color:#235fd6;font:inherit}.dispatch-outcome-row span{color:#8b98aa}
+@media(max-width:1100px){.province-node-list{grid-template-columns:repeat(3,minmax(0,1fr))}.review-history-card .history-filter-row{flex-wrap:wrap}}@media(max-width:700px){.province-node-list{grid-template-columns:1fr}.province-node{min-height:58px}.dispatch-outcome-row{flex-wrap:wrap}}
+.dashboard:has(.province-flow-strip){row-gap:16px}.province-flow-strip{margin-bottom:0;padding:21px 24px}.province-flow-strip .card-heading{margin-bottom:16px}.province-node-list{gap:10px}.province-node{position:relative;min-height:82px;padding:13px;border-color:#e0e9f7;background:linear-gradient(145deg,#fff,#f7faff);box-shadow:0 2px 8px rgba(39,74,128,.04);transition:border-color .2s,background .2s,box-shadow .2s,transform .2s}.province-node::after{position:absolute;right:-11px;top:50%;width:10px;height:2px;background:#dce7f7;content:"";transform:translateY(-50%)}.province-node:last-child::after{display:none}.province-node.reached{border-color:#bed3f6;background:linear-gradient(145deg,#f7faff,#edf4ff)}.province-node.current{border-color:#83aaf1;background:linear-gradient(135deg,#edf5ff,#e5efff);box-shadow:0 5px 16px rgba(35,95,214,.12),inset 3px 0 #235fd6;transform:translateY(-1px)}.province-node.current::after,.province-node.reached::after{background:#83aaf1}.province-node-number{width:32px;height:32px;box-shadow:0 2px 6px rgba(29,75,145,.06)}.province-node.current .province-node-number{box-shadow:0 0 0 4px rgba(35,95,214,.11)}.province-node:not(.current):not(.reached) strong{color:#687b96}.province-node.current strong{color:#1f55c6}.province-node.current small{color:#5f7fae}
+.review-history-card .history-filter-row{display:grid;grid-template-columns:minmax(180px,1fr) 110px 168px 155px 155px 154px;align-items:stretch;gap:8px;overflow-x:auto;flex-wrap:nowrap}.review-history-card .history-filter-row>*{min-width:0;max-width:none}.review-history-card .history-filter-row .search-box{width:100%;min-width:0;max-width:none;flex:none}.review-history-card .history-filter-row select{width:100%;max-width:none}.review-history-card .history-filter-row .history-date{width:100%;box-sizing:border-box;white-space:nowrap}.review-history-card .history-filter-row .history-date input{width:100%;min-width:0}.review-history-card .batch-review-button{display:inline-flex;justify-content:center;align-items:center;gap:5px;width:154px;min-width:154px;max-width:154px;padding:0 8px;box-sizing:border-box}.batch-review-count{display:grid;place-items:center;flex:none;min-width:19px;height:19px;padding:0 3px;border-radius:10px;background:rgba(255,255,255,.2);font-size:10px}.batch-review-button:disabled .batch-review-count{background:rgba(124,150,191,.14)}
+.dispatch-outcome-row{margin-top:6px;margin-bottom:2px}.audit-detail-file-row:has(.audit-upload-word)>div{flex-wrap:wrap}.audit-detail-file-row:has(.audit-upload-word)>div>button:first-child{flex:1 0 100%;width:100%;max-width:100%}.audit-detail-file-row button.audit-preview-report{min-height:38px;padding:9px 15px;border-color:#cbdcf7;background:#fff;color:#235fd6;font-size:12px;font-weight:700;white-space:nowrap}.audit-detail-file-row button.audit-preview-report:hover{border-color:#8eb4f3;background:#f2f7ff}.audit-detail-file-row button.audit-preview-report:focus-visible{outline:3px solid #9fc1fb;outline-offset:2px}
+@media(max-width:1100px){.review-history-card .history-filter-row{grid-template-columns:minmax(180px,1fr) 110px 168px 155px 155px 154px}.province-node::after{display:none}}@media(max-width:700px){.province-node{min-height:66px}}
+.province-node:not(.current):not(.reached){border-color:#c9daf5;background:linear-gradient(145deg,#fafdff,#eff5ff);color:#4b75b7;box-shadow:0 3px 10px rgba(40,94,179,.07)}.province-node:not(.current):not(.reached) .province-node-number{border-color:#aac7f2;background:#e7f0ff;color:#2865ca}.province-node:not(.current):not(.reached) strong{color:#355784}.province-node:not(.current):not(.reached) small{color:#738eaf}.province-node:not(.current):not(.reached) em{color:#547bb4}
+.dispatch-outcome-row{display:grid;grid-template-columns:90px minmax(0,1fr);align-items:center;gap:10px;margin:6px 0 2px;padding:11px 13px}.dispatch-outcome-control{display:grid;gap:6px;min-width:0}.dispatch-outcome-control select{width:100%;min-height:38px}.dispatch-outcome-control span{font-size:10px}.audit-detail-file-row:has(.audit-upload-word){align-items:center}.audit-detail-file-row:has(.audit-upload-word)>strong{padding-top:0}.audit-detail-file-row:has(.audit-upload-word)>div{display:flex;align-items:center;flex-wrap:nowrap;min-width:0}.audit-detail-file-row:has(.audit-upload-word)>div>button:first-child{flex:1 1 auto;width:auto;max-width:none;min-width:0;min-height:38px}.audit-detail-file-row:has(.audit-upload-word)>div>.audit-preview-report,.audit-detail-file-row:has(.audit-upload-word)>div>.audit-upload-word{flex:none;white-space:nowrap}
+@media(max-width:700px){.audit-detail-file-row:has(.audit-upload-word)>div{flex-wrap:wrap}.audit-detail-file-row:has(.audit-upload-word)>div>button:first-child{flex-basis:100%}}
 </style>
 
